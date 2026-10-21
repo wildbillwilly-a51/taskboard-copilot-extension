@@ -29,6 +29,7 @@ test("instance address is explicit, HTTPS-only and contains no credentials or pa
 test("no default host; denied grants cannot save or register anything", async () => {
   const f = fixture();
   assert.equal(await f.targets.getReviewUrl(), null);
+  assert.equal((await f.targets.status()).connected, false);
   await assert.rejects(f.targets.save("https://board.example"), /Allow access/);
   assert.deepEqual(f.local, {});
   assert.equal(f.scripts.size, 0);
@@ -39,11 +40,16 @@ test("registration is narrow, persists, and retargeting invalidates old transfer
   const f = fixture();
   f.grants.add("https://board.example/*");
   await f.targets.save("https://board.example");
+  assert.deepEqual(await f.targets.status(), { connected: true, state: "connected", label: "Taskboard connected", site: "board.example", reviewUrl: "https://board.example/copilot-review", detail: "Review bridge ready. Sign in on Taskboard when requested." });
   assert.equal(await f.targets.getReviewUrl(), "https://board.example/copilot-review");
   const script = f.scripts.get("taskboard-review");
   assert.deepEqual(script.matches, ["https://board.example/copilot-review*"]);
   assert.deepEqual(script.js, ["taskboard-review.js"]);
   assert.equal(script.persistAcrossSessions, true);
+  f.scripts.clear();
+  assert.equal((await f.targets.status()).connected, false);
+  await f.targets.reconcile();
+  assert.equal((await f.targets.status()).connected, true);
   f.session.copilotReviewTransfers = { private: { proposal: "pending" } };
   f.grants.add("https://second.example/*");
   await f.targets.save("https://second.example");
@@ -51,6 +57,7 @@ test("registration is narrow, persists, and retargeting invalidates old transfer
   assert.equal(f.grants.has("https://board.example/*"), false);
   assert.equal(await f.targets.getReviewUrl(), "https://second.example/copilot-review");
   await f.targets.clear();
+  assert.equal((await f.targets.status()).state, "disconnected");
   assert.deepEqual(f.local, {});
   assert.equal(f.scripts.size, 0);
   assert.equal(f.grants.size, 0);
@@ -60,6 +67,7 @@ test("revoked permissions and registration failures leave the bridge disconnecte
   f.grants.add("https://board.example/*");
   await f.targets.save("https://board.example");
   f.grants.clear();
+  assert.equal((await f.targets.status()).state, "attention");
   assert.equal(await f.targets.getReviewUrl(), null);
   await f.targets.reconcile();
   assert.equal(f.scripts.size, 0);

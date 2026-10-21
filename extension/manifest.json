@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Taskboard Copilot",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Open real Microsoft 365 Copilot in Split View or a separate window, with Taskboard prompt shortcuts.",
   "minimum_chrome_version": "148",
   "permissions": [
@@ -36,7 +36,8 @@
         "prompts.js",
         "composer.js",
         "dock.js",
-        "proposals.js"
+        "proposals.js",
+        "connection-dock.js"
       ],
       "run_at": "document_idle"
     }

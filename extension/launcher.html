@@ -5,18 +5,25 @@
 <title>Taskboard Copilot</title>
 <link rel="stylesheet" href="launcher.css">
 <main>
-  <p class="eyebrow">TASKBOARD + MICROSOFT 365</p>
-  <h1>Copilot, beside your work</h1>
-  <p class="intro">Choose where to open the real Copilot website.</p>
-  <button id="split" disabled><span class="symbol" aria-hidden="true">◫</span><span><strong>Split View</strong><small>Taskboard and Copilot in one window. Drag the divider to give Copilot less room.</small></span></button>
-  <button id="popup" disabled><span class="symbol" aria-hidden="true">▣</span><span><strong>Separate window</strong><small>Opens another browser window, outside this one. Resizable, with remembered size.</small></span></button>
-  <p id="capability" class="hint"></p>
+  <h1>Taskboard Copilot</h1>
+  <section id="connection" class="connection" role="status" aria-live="polite" data-state="loading">
+    <strong><span data-connection-icon aria-hidden="true">…</span> <span data-connection-label>Checking Taskboard…</span></strong>
+    <span data-connection-site></span>
+    <p data-connection-detail></p>
+    <button id="settings" type="button">Connect Taskboard</button>
+  </section>
+  <button id="split" class="mode" disabled><strong id="split-label">Split View</strong><span id="split-detail">Checking browser support…</span></button>
+  <section id="split-instructions" class="instructions" hidden aria-live="polite">
+    <strong id="split-step-title">One browser step is required</strong>
+    <p id="capability"></p>
+  </section>
+  <button id="popup" class="mode" disabled><strong>Separate window</strong><span>Opens another browser window with remembered size.</span></button>
+  <details><summary>Keyboard shortcut preference</summary>
   <label for="preferred">Keyboard shortcut opens</label>
   <select id="preferred" disabled><option value="split">Split View</option><option value="popup">Separate window</option></select>
-  <p class="hint">Ctrl+Shift+Y · Change the key in your browser’s extension shortcuts.</p>
-  <p id="status" role="status" aria-live="polite">Loading options…</p>
-  <p class="footer">Taskboard prompts are available inside Copilot. Review each draft and send it yourself.</p>
-  <p><a href="options.html" target="_blank">Settings · connect your Taskboard</a></p>
+  <p class="hint">Ctrl+Shift+Y · Change this key in your browser’s extension shortcuts.</p>
+  </details>
+  <p id="status" role="status" aria-live="polite"></p>
 </main>
 <script type="module" src="launcher.mjs"></script>
 </html>

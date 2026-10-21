@@ -10,4 +10,11 @@ button[type=submit] { background: #345ac4; color: white; }
 button:disabled { opacity: .6; cursor: wait; }
 input:focus-visible,button:focus-visible { outline: 3px solid #86a7ff; outline-offset: 3px; }
 #status { min-height: 24px; font-weight: 600; }
+.connection { padding: 18px; border: 1px solid light-dark(#b18a22,#d2af54); border-radius: 12px; background: light-dark(#fff7df,#3d341c); margin: 18px 0; }
+.connection[data-state=connected] { border-color: light-dark(#348364,#64bc94); background: light-dark(#e9f8f0,#163d30); }
+.connection strong { display: block; font-size: 21px; }
+.connection [data-connection-site] { display: block; font-weight: 600; overflow-wrap: anywhere; margin-top: 6px; }
+.connection p { margin: 8px 0; }
+.connection a { display: inline-block; padding: 10px 0; font-weight: 650; color: inherit; }
+[hidden] { display: none !important; }
 @media(max-width: 650px) { main { margin: 12px; padding: 20px; } button { width: 100%; margin-bottom: 8px; } }

@@ -1,5 +1,5 @@
 export const COPILOT_URL = "https://m365.cloud.microsoft/chat";
-export const SPLIT_GUIDE = "Select the Taskboard and Copilot tabs together (Ctrl-click; ⌘-click on Mac). Right-click either selected tab and choose New Split View (or Add tab to new split view). Then drag the divider to make Copilot narrow. If your menu has no Split View command, this browser cannot provide the in-window layout.";
+export const SPLIT_GUIDE = "Tabs prepared — one browser step left. Right-click either selected tab and choose New Split View. Then drag the divider to resize. If you clicked away, select both tabs again first.";
 
 export function popupBounds(saved = {}, anchor = {}) {
   const area = { left: anchor.left ?? 0, top: anchor.top ?? 0, width: anchor.width ?? 1200, height: anchor.height ?? 900 };

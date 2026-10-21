@@ -1,5 +1,6 @@
 /* global chrome, document */
 import { reviewTarget } from "./target.mjs";
+import { showConnection } from "./connection-view.mjs";
 const input = document.querySelector("#address");
 const status = document.querySelector("#status");
 const buttons = [...document.querySelectorAll("button")];
@@ -7,8 +8,11 @@ const busy = value => buttons.forEach(button => { button.disabled = value; });
 async function load() {
   const { taskboardReviewUrl } = await chrome.storage.local.get("taskboardReviewUrl");
   input.value = taskboardReviewUrl ? new URL(taskboardReviewUrl).origin : "";
-  const allowed = taskboardReviewUrl && await chrome.permissions.contains({ origins: [reviewTarget(taskboardReviewUrl).origin] });
-  status.textContent = allowed ? "Connected. Refresh your Taskboard and Copilot tabs." : "Taskboard is not connected.";
+  const state = await chrome.runtime.sendMessage({ type: "taskboard-status" });
+  if (!state?.label) throw Error("Connection status is unavailable. Reload the extension.");
+  showConnection(document.querySelector("#connection"), state);
+  status.textContent = state.connected ? "Connection saved. Refresh your Taskboard and Copilot tabs." : state.detail;
+  document.querySelector("#disconnect").disabled = !taskboardReviewUrl;
 }
 document.querySelector("#setup").addEventListener("submit", async event => {
   event.preventDefault();
@@ -34,3 +38,6 @@ document.querySelector("#disconnect").addEventListener("click", async () => {
   finally { busy(false); }
 });
 void load().catch(() => { status.textContent = "Settings could not be loaded. Reopen this page."; });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.taskboardReviewUrl) void load().catch(() => {});
+});

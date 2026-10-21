@@ -34,6 +34,19 @@ export function createTargetController(api) {
   }
   return {
     getReviewUrl,
+    status() { return serialized(async () => {
+      const { taskboardReviewUrl } = await api.storage.local.get("taskboardReviewUrl");
+      const missing = { connected: false, state: "disconnected", label: "Taskboard not connected", site: "", detail: "Connect your Taskboard to review proposed changes." };
+      if (!taskboardReviewUrl) return missing;
+      let target;
+      try { target = reviewTarget(taskboardReviewUrl); } catch { return { ...missing, detail: "The saved address is invalid. Reconnect in Settings." }; }
+      const site = new URL(target.url).host;
+      if (!await api.permissions.contains({ origins: [target.origin] })) return { ...missing, state: "attention", site, detail: "Site access was removed. Reconnect in Settings." };
+      const scripts = await api.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
+      const ready = scripts.some(script => script.id === SCRIPT_ID && script.matches.length === 1 && script.matches[0] === target.match && script.js?.includes("taskboard-review.js"));
+      if (!ready) return { ...missing, state: "attention", site, detail: "The review bridge is not ready. Reconnect in Settings." };
+      return { connected: true, state: "connected", label: "Taskboard connected", site, reviewUrl: target.url, detail: "Review bridge ready. Sign in on Taskboard when requested." };
+    }); },
     save(input) { return serialized(async () => {
       const target = reviewTarget(input);
       if (!await api.permissions.contains({ origins: [target.origin] })) throw Error("Allow access to this Taskboard site before saving.");

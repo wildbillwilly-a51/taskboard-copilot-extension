@@ -1,7 +1,7 @@
 import { createTargetController } from "./target.mjs";
 /* global chrome */
 import { createHostController } from "./host-controller.mjs";
-import { createReviewController } from "./review-controller.mjs";
+import { createReviewController, isCopilotPage } from "./review-controller.mjs";
 const hosts = createHostController(chrome);
 const targets = createTargetController(chrome);
 const reviews = createReviewController(chrome, { getReviewUrl: targets.getReviewUrl });
@@ -24,6 +24,16 @@ async function open(mode, tab) {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
+  if (message?.type === "taskboard-status") {
+    const trusted = ["options.html", "launcher.html"].some(page => sender.url === chrome.runtime.getURL(page)) || isCopilotPage(sender.url);
+    if (!trusted) return false;
+    void targets.status().then(respond, () => respond(null));
+    return true;
+  }
+  if (message?.type === "open-taskboard-settings" && isCopilotPage(sender.url)) {
+    void chrome.runtime.openOptionsPage().then(() => respond({ ok: true }), () => respond({ ok: false }));
+    return true;
+  }
   if (["configure-taskboard", "disconnect-taskboard"].includes(message?.type)) {
     if (sender.url !== chrome.runtime.getURL("options.html")) return false;
     const action = message.type === "configure-taskboard" ? targets.save(message.url) : targets.clear();

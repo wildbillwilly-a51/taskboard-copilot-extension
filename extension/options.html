@@ -6,6 +6,12 @@
 <link rel="stylesheet" href="options.css">
 <main>
   <h1>Connect your Taskboard</h1>
+  <section id="connection" class="connection" data-state="loading" role="status" aria-live="polite">
+    <strong><span data-connection-icon aria-hidden="true">…</span> <span data-connection-label>Checking Taskboard…</span></strong>
+    <span data-connection-site></span>
+    <p data-connection-detail></p>
+    <a data-open-taskboard hidden target="_blank" rel="noopener">Open Taskboard review</a>
+  </section>
   <p>Split View and prompt shortcuts work without this connection. To review Copilot’s proposed task changes, connect a Taskboard server that supports Copilot review.</p>
   <form id="setup">
     <label for="address">Taskboard website</label>

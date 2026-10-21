@@ -30,10 +30,13 @@ try {
   options.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
   await options.goto(`chrome-extension://${id}/options.html`);
   assert.equal(await options.title(), "Taskboard Copilot settings");
-  await options.getByText("Taskboard is not connected.", { exact: true }).waitFor();
+  await options.locator("#connection[data-state=disconnected]").waitFor();
   await options.getByLabel("Taskboard website").fill("https://board.example");
   await options.getByRole("button", { name: "Connect Taskboard", exact: true }).click();
-  await options.getByText("Connected. Refresh your Taskboard and Copilot tabs.", { exact: true }).waitFor();
+  await options.locator("#connection[data-state=connected]").waitFor();
+  assert.equal(await options.locator("[data-connection-label]").textContent(), "Taskboard connected");
+  await options.reload();
+  await options.locator("#connection[data-state=connected]").waitFor();
   const scripts = await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
   assert.deepEqual(scripts[0].matches, ["https://board.example/copilot-review*"]);
   const proposal = { type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "public-fixture-1", changes: [{ op: "note", task: "abc123", text: "Fixture note", reason: "Fixture only" }] };
@@ -42,6 +45,7 @@ try {
   const copilot = await context.newPage();
   copilot.on("pageerror", error => errors.push(error.message));
   await copilot.goto("https://m365.cloud.microsoft/chat");
+  await copilot.locator("#taskboard-copilot-prompts").getByRole("button", { name: /Taskboard connected/ }).waitFor();
   await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
   const created = context.waitForEvent("page");
   await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).click();
@@ -52,7 +56,8 @@ try {
   assert.equal(await copilot.getByLabel("Message Copilot").inputValue(), "Unsent draft");
   await options.bringToFront();
   await options.getByRole("button", { name: "Disconnect", exact: true }).click();
-  await options.getByText("Taskboard is not connected.", { exact: true }).waitFor();
+  await options.locator("#connection[data-state=disconnected]").waitFor();
+  await copilot.locator("#taskboard-copilot-prompts").getByRole("button", { name: /Taskboard not connected/ }).waitFor();
   assert.deepEqual(await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()), []);
   assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers), {});
   const evidence = path.join(root, "evidence"); mkdirSync(evidence);

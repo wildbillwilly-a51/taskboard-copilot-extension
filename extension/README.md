@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.0.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.1.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -23,7 +23,15 @@ server. Workplace browser policies may restrict unpacked extensions.
 
 ## Use
 
-Open the toolbar menu from your Taskboard tab and choose **Split View**.
+The toolbar, Settings page and Copilot prompt dock show a persistent connection
+indicator and your configured site. A green **Taskboard connected** card means
+the browser has site access and the review bridge is registered. It does not
+verify your server session or network reachability; sign in normally on
+Taskboard. **Connect Taskboard** / **Manage Taskboard connection** opens Settings.
+
+Open the toolbar menu from your Taskboard tab. Browsers with the automatic
+pairing API offer **Open Split View**. Older browsers offer **Prepare Split
+View**, with the remaining browser-menu step shown before you click.
 If automatic pairing is unavailable, both tabs are selected for you: right-click
 one and choose the browser's New Split View command. Drag the divider to resize.
 The browser controls its minimum widths and may start new pairs at 50/50.
