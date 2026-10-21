@@ -62,7 +62,7 @@ test("composer insertion through the actual isolated extension content scripts",
           setTimeout(() => { editor.value = globalThis.model; }, 20);
         });
       });
-      for (const id of ["snapshot", "priorities", "meeting", "review"]) {
+      for (const id of ["snapshot", "priorities", "meeting", "review", "prepare"]) {
         await choose(page, id);
         await inserted(page);
         assert.equal(await page.locator("#prompt-panel").isVisible(), false);
@@ -73,6 +73,23 @@ test("composer insertion through the actual isolated extension content scripts",
         await page.locator("#composer").fill("");
         await page.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
       }
+      await page.close();
+    });
+    await suite.test("Prepare changes is reachable in a narrow popup and requests a proposal without sending", async () => {
+      const page = await createPage(textarea);
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.emulateMedia({ colorScheme: "dark" });
+      const action = page.getByRole("button", { name: "Prepare changes Turn recommendations into a proposal", exact: true });
+      await action.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(evidence, "prepare-changes-320-dark.png") });
+      await action.click();
+      await inserted(page);
+      const text = await page.getByLabel("Message Copilot").inputValue();
+      assert.match(text, /recommendations and my explicit change requests in this conversation/);
+      assert.match(text, /ONE JSON code block/);
+      assert.match(text, /missing decisions/);
+      assert.equal(await page.locator("#prompt-panel").isVisible(), false);
+      assert.equal(await page.evaluate(() => globalThis.sent), 0);
       await page.close();
     });
     await suite.test("existing drafts require confirmation and Keep draft preserves them", async () => {

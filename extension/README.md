@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.5.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.6.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -63,6 +63,13 @@ Code editor, click
 **Review changes in Taskboard** beside it. Review, edit, select and approve
 changes on your signed-in Taskboard server. No task is changed by the extension
 alone. Microsoft page changes and tenant policy can affect detection/insertion.
+
+**Review stale tasks** requests recommendations plus a proposal for concrete,
+supported changes. For recommendations already in a chat, choose **Prepare
+changes**, review the inserted request and send it yourself. Copilot must return
+the proposal JSON before the review button can appear. Conditional advice and
+missing decisions stay outside the proposal; clarify them with Copilot first.
+Plain recommendation text by itself does not create a Taskboard review entry.
 
 To update, replace your extracted runtime with the new release and click
 **Reload** on the browser's extensions page, then refresh both website tabs.

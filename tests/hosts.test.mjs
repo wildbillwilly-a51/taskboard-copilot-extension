@@ -133,9 +133,9 @@ const context = vm.createContext({ Intl, Date });
 vm.runInContext(readFileSync(new URL("../extension/prompts.js", import.meta.url), "utf8"), context);
 const prompts = context.TaskboardCopilotPrompts;
 
-test("all four shortcuts ground in the named snapshot and preserve manual review", () => {
-  assert.equal(prompts.shortcuts.length, 4);
-  assert.equal(new Set(prompts.shortcuts.map((item) => item.id)).size, 4);
+test("all five shortcuts ground in the named snapshot and preserve manual review", () => {
+  assert.equal(prompts.shortcuts.length, 5);
+  assert.equal(new Set(prompts.shortcuts.map((item) => item.id)).size, 5);
   for (const shortcut of prompts.shortcuts) {
     const text = prompts.buildPrompt(shortcut.id, new Date(2026, 9, 20, 12));
     assert.match(text, /Today is 2026-10-20/);
@@ -148,6 +148,22 @@ test("all four shortcuts ground in the named snapshot and preserve manual review
     assert.match(text, /before approval/);
   }
   assert.throws(() => prompts.buildPrompt("bad"), /Unknown/);
+});
+
+test("recommendation review and preparation request proposals while preserving unresolved decisions", () => {
+  for (const id of ["review", "prepare"]) {
+    const text = prompts.buildPrompt(id);
+    assert.match(text, /ONE JSON code block/);
+    assert.match(text, /taskboard-proposal/);
+    assert.match(text, /conditional|Conditional/);
+    assert.match(text, /missing decisions/);
+    assert.match(text, /do not invent|rather than inventing/i);
+    assert.match(text, /If no concrete change is ready|If nothing concrete is ready/);
+    assert.match(text, /button in Copilot/);
+    assert.match(text, /citations and explanatory prose outside the JSON/);
+  }
+  assert.match(prompts.buildPrompt("prepare"), /in this conversation/);
+  assert.match(prompts.buildPrompt("prepare"), /general acknowledgement/);
 });
 
 test("manifest has only scoped content scripts and local runtime resources", () => {

@@ -1,24 +1,23 @@
 # Handoff
 
 ## Objective
-Deliver version 1.5.5 with a complete pass over extension feedback and dismissal.
+Deliver version 1.5.6 with a clear recommendations-to-proposal workflow.
 
 ## Current State
-Notices have an explicit dismiss button, expire after five seconds for success
-or ten for warnings, and clear on Escape, outside actions, editing and reopening.
-Warning details remain inside the prompt panel. Close cancels old confirmations;
-late results cannot resurrect feedback or steal focus. Replaced Copilot editors
-are rechecked without reinserting text. Copy success closes the popup.
-Settings retain unsaved addresses and correct disabled states. Settings-open and
-preference-save failures remain recoverable. Connection status stays inside the
-popup and reports unavailable checks without showing stale connected state.
-No server, permission or proposal contract changes.
+Review stale tasks requests recommendations plus proposal JSON for concrete,
+supported changes. Prepare changes explicitly turns existing chat recommendations
+and established decisions into proposal JSON. Uncertain advice and missing
+choices remain questions; ordinary acknowledgements do not prove completion.
+The prompt explains that the extension supplies Review changes in Taskboard
+beside valid JSON, with approval required in Taskboard. Prose alone is not a
+proposal. No conversation scanning, guessed changes or server/permission changes.
+Existing notice dismissal/expiry, draft protection and manual sending remain.
 
 ## Validation Completed
-18 public unit results, 19 composer lifecycle results per engine, four full
-legacy/editor browser flows and two native-toolbar flows passed in Chromium and
-Brave. Dismissal, timeout, focus, replacement editors, drafts, exact JSON,
-clipboard, Settings failures, denied access and preference recovery are covered.
-Desktop and 390/320px light/dark evidence was inspected. Browser fixtures use
-fresh profiles and an example origin; real tenant acceptance follows reload.
+19 public units and 20 composer results per Chromium/Brave engine passed,
+including all five actions, narrow Prepare changes insertion and no automatic
+send. Both engines passed actual editor-proposal transfer/acknowledgement and
+Settings flows. Earlier valid legacy/native-toolbar evidence remains applicable.
+Fresh-profile fixtures test extension behavior; actual tenant output compliance
+requires sending the prepared prompt and receiving valid proposal JSON.
 Never publish profiles, personalized settings or private source history.
