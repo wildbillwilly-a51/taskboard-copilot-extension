@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskboard Copilot settings</title>
+<link rel="stylesheet" href="options.css">
+<main>
+  <h1>Connect your Taskboard</h1>
+  <p>Split View and prompt shortcuts work without this connection. To review Copilot’s proposed task changes, connect a Taskboard server that supports Copilot review.</p>
+  <form id="setup">
+    <label for="address">Taskboard website</label>
+    <input id="address" type="url" placeholder="https://your-taskboard.example" required autocomplete="off" spellcheck="false">
+    <p>Your address stays in this browser profile. It is never included in the public download or sent to GitHub. Sign in to Taskboard normally; no password or API key belongs here.</p>
+    <button type="submit">Connect Taskboard</button>
+    <button id="disconnect" type="button">Disconnect</button>
+  </form>
+  <p id="status" role="status" aria-live="polite">Loading settings…</p>
+  <p>After connecting, refresh your Taskboard and Copilot tabs. Review and approve proposed changes in Taskboard before they apply.</p>
+  <p>Browser access is requested only for the HTTPS site you enter. The review bridge runs only at that site’s <code>/copilot-review</code> page.</p>
+</main>
+<script type="module" src="options.mjs"></script>
+</html>

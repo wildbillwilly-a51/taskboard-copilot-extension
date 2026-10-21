@@ -1,0 +1,32 @@
+# new-project-setup:v7:start
+# Machine-local private documentation
+*.local.md
+.github-backup.local.json
+.codex/migrations/new-project-setup-v4-github.local.json
+.codex/migrations/new-project-setup-v6-github.local.json
+
+# Generated dependencies and build output
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+out/
+.next/
+coverage/
+test-artifacts/
+playwright-report/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+Thumbs.db
+# new-project-setup:v7:end
+
+# Local credentials and personalized output
+.env
+.env.*
+*.pem
+*.key
+*.local.json

@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "Taskboard Copilot",
+  "version": "1.5.0",
+  "description": "Open real Microsoft 365 Copilot in Split View or a separate window, with Taskboard prompt shortcuts.",
+  "minimum_chrome_version": "148",
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.mjs",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Taskboard Copilot \u00b7 Split View / Separate window",
+    "default_popup": "launcher.html"
+  },
+  "commands": {
+    "open-copilot": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Open Copilot using the preferred Split View / Separate window option"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://m365.cloud.microsoft/*",
+        "https://copilot.cloud.microsoft/*"
+      ],
+      "js": [
+        "prompts.js",
+        "composer.js",
+        "dock.js",
+        "proposals.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}
