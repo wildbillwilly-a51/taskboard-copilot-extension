@@ -28,19 +28,40 @@
   preparation.setAttribute("role", "status");
   control.after(preparation);
   root.append(style);
-  control.addEventListener("click", () => {
-    void chrome.runtime.sendMessage({ type: "open-taskboard-settings" }).catch(() => {});
+  control.addEventListener("click", async () => {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: "open-taskboard-settings" });
+      if (!result?.ok) throw Error("Settings unavailable");
+      root.querySelector(".close").click();
+    } catch {
+      const status = root.querySelector(".status");
+      status.textContent = "Settings could not be opened. Try again or open the extension's options from your browser.";
+      status.scrollIntoView({ block: "nearest" });
+    }
   });
+  let refreshRevision = 0;
   async function refresh() {
-    const state = await chrome.runtime.sendMessage({ type: "taskboard-status" });
-    if (!state?.label) return;
-    control.dataset.connected = String(state.connected);
-    control.querySelector("strong").textContent = `${state.connected ? "✓" : "!"} ${state.label}`;
-    control.querySelector("small").textContent = state.site || "Connect Taskboard · open Settings";
-    control.title = `${state.detail} Open connection settings.`;
-    const result = await chrome.runtime.sendMessage({ type: "split-guide" });
-    preparation.textContent = result?.guide || "";
-    preparation.hidden = !result?.guide;
+    const revision = ++refreshRevision;
+    try {
+      const state = await chrome.runtime.sendMessage({ type: "taskboard-status" });
+      if (revision !== refreshRevision) return;
+      if (!state?.label) throw Error("Status unavailable");
+      control.dataset.connected = String(state.connected);
+      control.querySelector("strong").textContent = `${state.connected ? "✓" : "!"} ${state.label}`;
+      control.querySelector("small").textContent = state.site || "Connect Taskboard · open Settings";
+      control.title = `${state.detail} Open connection settings.`;
+      const result = await chrome.runtime.sendMessage({ type: "split-guide" }).catch(() => null);
+      if (revision !== refreshRevision) return;
+      preparation.textContent = result?.guide || "";
+      preparation.hidden = !result?.guide;
+    } catch {
+      if (revision !== refreshRevision) return;
+      control.dataset.connected = "false";
+      control.querySelector("strong").textContent = "! Connection status unavailable";
+      control.querySelector("small").textContent = "Reload the extension and refresh Copilot, then try again.";
+      control.title = "Connection status could not be checked.";
+      preparation.hidden = true;
+    }
   }
   void refresh().catch(() => {});
   chrome.storage.onChanged.addListener((_changes, area) => { if (area === "local") void refresh().catch(() => {}); });

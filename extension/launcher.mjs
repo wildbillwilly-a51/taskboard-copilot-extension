@@ -8,6 +8,7 @@ const guide = document.querySelector("#split-instructions");
 const capability = document.querySelector("#capability");
 const settings = document.querySelector("#settings");
 let source;
+let savedPreference = "split";
 function busy(value) { modes.forEach(button => { button.disabled = value; }); preferred.disabled = value; }
 async function connection() {
   const state = await chrome.runtime.sendMessage({ type: "taskboard-status" });
@@ -15,7 +16,10 @@ async function connection() {
   showConnection(document.querySelector("#connection"), state);
   settings.textContent = state.connected ? "Manage Taskboard connection" : "Connect Taskboard";
 }
-settings.addEventListener("click", () => { void chrome.runtime.openOptionsPage(); });
+settings.addEventListener("click", async () => {
+  try { await chrome.runtime.openOptionsPage(); window.close(); }
+  catch { status.textContent = "Settings could not be opened. Try again or open the extension's options from your browser."; }
+});
 document.querySelector("#split-label").textContent = automatic ? "Open Split View" : "Prepare Split View";
 document.querySelector("#split-detail").textContent = automatic ? "Pair Taskboard and Copilot in one browser window." : "Select both tabs; finish with right-click → New Split View.";
 guide.hidden = true;
@@ -24,14 +28,26 @@ try {
   [source] = await chrome.tabs.query({ active: true, currentWindow: true });
   const { preferredMode = "split" } = await chrome.storage.local.get("preferredMode");
   preferred.value = preferredMode === "popup" ? "popup" : "split";
+  savedPreference = preferred.value;
   if (!source) throw Error("Open the extension from your Taskboard tab.");
   busy(false);
 } catch (error) { status.textContent = error.message; }
 void connection().catch(error => { status.textContent = error.message; });
 chrome.storage.onChanged.addListener((_changes, area) => { if (area === "local") void connection().catch(() => {}); });
-preferred.addEventListener("change", () => { void chrome.storage.local.set({ preferredMode: preferred.value }); });
+preferred.addEventListener("change", async () => {
+  preferred.disabled = true;
+  try {
+    await chrome.storage.local.set({ preferredMode: preferred.value });
+    savedPreference = preferred.value;
+    status.textContent = "Keyboard shortcut preference saved.";
+  } catch {
+    preferred.value = savedPreference;
+    status.textContent = "Preference could not be saved. Try again.";
+  } finally { preferred.disabled = false; }
+});
 for (const button of modes) button.addEventListener("click", async () => {
   busy(true);
+  guide.hidden = true;
   status.textContent = "Opening Copilot…";
   try {
     const result = await chrome.runtime.sendMessage({ type: "open-copilot", mode: button.id, tabId: source.id });

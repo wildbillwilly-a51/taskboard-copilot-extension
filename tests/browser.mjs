@@ -31,9 +31,28 @@ try {
   await options.goto(`chrome-extension://${id}/options.html`);
   assert.equal(await options.title(), "Taskboard Copilot settings");
   await options.locator("#connection[data-state=disconnected]").waitFor();
+  assert.equal(await options.getByRole("button", { name: "Disconnect", exact: true }).isDisabled(), true);
+  await options.getByLabel("Taskboard website").fill("https://draft.example");
+  await worker.evaluate(() => chrome.storage.local.set({ taskboardReviewUrl: "https://board.example/copilot-review" }));
+  await options.locator("#connection[data-state=attention]").waitFor();
+  assert.equal(await options.getByLabel("Taskboard website").inputValue(), "https://draft.example", "Background settings refresh must preserve an unsaved address");
+  await worker.evaluate(() => chrome.storage.local.remove("taskboardReviewUrl"));
+  await options.locator("#connection[data-state=disconnected]").waitFor();
+  assert.equal(await options.getByLabel("Taskboard website").inputValue(), "https://draft.example");
   await options.getByLabel("Taskboard website").fill("https://board.example");
+  await options.evaluate(() => {
+    globalThis.fixturePermissions = chrome.permissions.request;
+    chrome.permissions.request = async () => false;
+  });
+  await options.getByRole("button", { name: "Connect Taskboard", exact: true }).click();
+  await options.locator("#status").filter({ hasText: "Site access was not granted" }).waitFor();
+  await options.locator('button[type="submit"]:not([disabled])').waitFor();
+  assert.equal(await options.getByRole("button", { name: "Disconnect", exact: true }).isDisabled(), true);
+  assert.equal(await options.getByLabel("Taskboard website").inputValue(), "https://board.example");
+  await options.evaluate(() => { chrome.permissions.request = globalThis.fixturePermissions; });
   await options.getByRole("button", { name: "Connect Taskboard", exact: true }).click();
   await options.locator("#connection[data-state=connected]").waitFor();
+  await options.locator("#status").filter({ hasText: "Connection saved." }).waitFor();
   assert.equal(await options.locator("[data-connection-label]").textContent(), "Taskboard connected");
   await options.reload();
   await options.locator("#connection[data-state=connected]").waitFor();
@@ -94,6 +113,33 @@ try {
   assert.equal(await preparation.isVisible(), false);
   await copilot.setViewportSize({ width: 1280, height: 780 });
   await copilot.emulateMedia({ colorScheme: "light" });
+  await worker.evaluate(() => {
+    globalThis.fixtureStatusUnavailable = true;
+    chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+      if (globalThis.fixtureStatusUnavailable && message.type === "taskboard-status") respond(null);
+      return false;
+    });
+    return chrome.storage.local.set({ dockFixtureRefresh: 2 });
+  });
+  await connection.filter({ hasText: "Connection status unavailable" }).waitFor({ state: "attached" });
+  assert.equal(await connection.isVisible(), false, "Failed background refresh must remain inside the closed panel");
+  await worker.evaluate(() => {
+    globalThis.fixtureStatusUnavailable = false;
+    return chrome.storage.local.set({ dockFixtureRefresh: 3 });
+  });
+  await dock.locator('#connection-control[data-connected="true"]').waitFor({ state: "attached" });
+  await dock.locator(".toggle").click();
+  await worker.evaluate(() => {
+    globalThis.fixtureOpenOptions = chrome.runtime.openOptionsPage;
+    chrome.runtime.openOptionsPage = async () => { throw Error("Fixture unavailable"); };
+  });
+  await connection.click();
+  await dock.locator(".status").filter({ hasText: "Settings could not be opened" }).waitFor();
+  assert.equal(await dock.locator(".panel").isVisible(), true);
+  await worker.evaluate(() => { chrome.runtime.openOptionsPage = globalThis.fixtureOpenOptions; });
+  await connection.click();
+  await dock.locator(".panel").waitFor({ state: "hidden" });
+  await copilot.bringToFront();
   await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
   assert.equal(await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).count(), 1);
   assert.equal(await copilot.locator("#negative-candidates .taskboard-copilot-proposal-review").count(), 0);
@@ -132,6 +178,8 @@ try {
   await options.bringToFront();
   await options.getByRole("button", { name: "Disconnect", exact: true }).click();
   await options.locator("#connection[data-state=disconnected]").waitFor();
+  await options.locator('button[type="submit"]:not([disabled])').waitFor();
+  assert.equal(await options.getByRole("button", { name: "Disconnect", exact: true }).isDisabled(), true, "Disconnect must remain disabled after a successful disconnect");
   await connection.filter({ hasText: "Taskboard not connected" }).waitFor({ state: "attached" });
   assert.equal(await connection.isVisible(), false, "A background connection change must not reveal the closed banner");
   await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();

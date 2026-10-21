@@ -43,20 +43,20 @@
   const canonical = (value) => value.replace(/[\s\u200b]+/g, " ").trim();
   const pause = () => new Promise((resolve) => setTimeout(resolve, 60));
 
-  async function insertPrompt(element, text, expectedSnapshot) {
+  async function insertPrompt(element, text, expectedSnapshot, canFocus = () => true) {
     if (!ready(element)) return { state: "unavailable" };
     if (snapshot(element) !== expectedSnapshot) return { state: "changed" };
     const doc = element.ownerDocument;
     const win = doc.defaultView;
-    const selectContents = () => {
-      element.focus();
+    const selectContents = (target = element) => {
+      target.focus();
       const range = doc.createRange();
-      range.selectNodeContents(element);
+      range.selectNodeContents(target);
       const selection = win.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
     };
-    const matches = () => element.isConnected && canonical(draftText(element)) === canonical(text);
+    const matches = (target) => ready(target) && canonical(draftText(target)) === canonical(text);
     try {
       if (element.tagName === "TEXTAREA") {
         // Use the native setter so controlled inputs observe the subsequent input
@@ -78,27 +78,34 @@
         const paste = new win.ClipboardEvent("paste", { bubbles: true, cancelable: true, composed: true, clipboardData: transfer });
         element.dispatchEvent(paste);
         await pause();
-        if (!matches() && !paste.defaultPrevented && snapshot(element) === expectedSnapshot) {
+        if (!matches(element) && !paste.defaultPrevented && ready(element) && findComposer(doc) === element && snapshot(element) === expectedSnapshot) {
           // Plain contenteditables have no paste handler for synthetic events.
           // Chromium's editing command preserves native input/undo behavior.
           selectContents();
           doc.execCommand("insertText", false, text);
         }
       }
-      await pause();
-      if (!matches()) return { state: "unconfirmed" };
-      // A model-based editor may reconcile asynchronously; do not announce a
-      // successful insert that disappears on its next render.
-      await pause();
-      if (!matches()) return { state: "unconfirmed" };
-      element.focus();
-      if (element.tagName === "TEXTAREA") element.setSelectionRange(text.length, text.length);
-      else {
-        selectContents();
-        win.getSelection().collapseToEnd();
+      // Copilot can replace the editor after handling paste/input. Reacquire
+      // only its unique visible composer and verify the complete text twice.
+      // Never retry insertion into a replacement or overwrite a changed draft.
+      let previous = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await pause();
+        const current = findComposer(doc);
+        if (matches(current) && current === previous) {
+          if (!canFocus()) return { state: "inserted" };
+          current.focus();
+          if (current.tagName === "TEXTAREA") current.setSelectionRange(current.value.length, current.value.length);
+          else {
+            selectContents(current);
+            win.getSelection().collapseToEnd();
+          }
+          current.scrollIntoView({ block: "nearest" });
+          return { state: "inserted" };
+        }
+        previous = matches(current) ? current : null;
       }
-      element.scrollIntoView({ block: "nearest" });
-      return { state: "inserted" };
+      return { state: "unconfirmed" };
     } catch {
       return { state: "unconfirmed" };
     }

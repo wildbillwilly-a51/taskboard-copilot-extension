@@ -73,6 +73,15 @@ try {
     await popup.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: theme }] });
     const shot = await popup.send("Page.captureScreenshot"); writeFileSync(path.join(root, `native-popup-${theme}.png`), Buffer.from(shot.data, "base64"));
   }
+  await popup.evaluate('globalThis.fixtureSavePreference = chrome.storage.local.set; chrome.storage.local.set = async () => { throw Error("Fixture save failure"); }; document.querySelector("#preferred").value = "popup"; document.querySelector("#preferred").dispatchEvent(new Event("change", {bubbles:true}));');
+  await until(() => popup.evaluate('document.querySelector("#status").textContent.includes("Preference could not be saved") && !document.querySelector("#preferred").disabled'));
+  assert.equal(await popup.evaluate('document.querySelector("#preferred").value'), "split");
+  await popup.evaluate('chrome.storage.local.set = globalThis.fixtureSavePreference; document.querySelector("#preferred").value = "popup"; document.querySelector("#preferred").dispatchEvent(new Event("change", {bubbles:true}));');
+  await until(() => popup.evaluate('document.querySelector("#status").textContent === "Keyboard shortcut preference saved."'));
+  assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get("preferredMode")).preferredMode), "popup");
+  await popup.evaluate('globalThis.fixtureOpenOptions = chrome.runtime.openOptionsPage; chrome.runtime.openOptionsPage = async () => { throw Error("Fixture unavailable"); }; document.querySelector("#settings").click();');
+  await until(() => popup.evaluate('document.querySelector("#status").textContent.includes("Settings could not be opened")'));
+  await popup.evaluate('chrome.runtime.openOptionsPage = globalThis.fixtureOpenOptions;');
   const position = await popup.evaluate('(()=>{const r=document.querySelector("#split").getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()');
   await popup.send("Input.dispatchMouseEvent", { type: "mousePressed", button: "left", clickCount: 1, ...position });
   await popup.send("Input.dispatchMouseEvent", { type: "mouseReleased", button: "left", clickCount: 1, ...position });

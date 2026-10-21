@@ -1,4 +1,4 @@
-/* global chrome, document, navigator, TaskboardCopilotPrompts, TaskboardCopilotComposer */
+/* global chrome, document, navigator, window, TaskboardCopilotPrompts, TaskboardCopilotComposer */
 (() => {
   if (document.getElementById("taskboard-copilot-prompts")) return;
   const host = document.createElement("div");
@@ -34,7 +34,9 @@
       .copy:hover { background: #284098; border-color: #284098; }
       .secondary { margin-top: 8px; width: 100%; text-align: center; }
       .draft-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-      .notice { font: 12px/1.45 system-ui, sans-serif; max-width: min(350px, calc(100vw - 32px)); padding: 10px; border-radius: 10px; background: #f8faff; box-shadow: 0 4px 18px #14243720; }
+      .notice { display:flex; align-items:flex-start; gap:8px; font: 12px/1.45 system-ui, sans-serif; max-width: min(350px, calc(100vw - 32px)); padding: 10px; border-radius: 10px; background: #f8faff; box-shadow: 0 4px 18px #14243720; }
+      .notice-text { flex:1; min-width:0; overflow-wrap:anywhere; }
+      .notice-dismiss { flex-shrink:0; min-width:36px; min-height:36px; padding:4px; text-align:center; font-size:20px; }
       .status { min-height: 36px; margin: 10px 0 0; }
       @media (max-width: 280px) { .shortcuts { grid-template-columns: 1fr; } }
       @media (prefers-color-scheme: dark) {
@@ -48,7 +50,7 @@
       }
     </style>
     <button class="toggle" aria-expanded="false" aria-controls="prompt-panel">Taskboard prompts</button>
-    <p class="notice" role="status" aria-live="polite" hidden></p>
+    <div class="notice" role="status" aria-live="polite" hidden><span class="notice-text"></span><button class="notice-dismiss" aria-label="Dismiss Taskboard message">×</button></div>
     <section class="panel" id="prompt-panel" aria-labelledby="dock-title" hidden>
       <header><h2 id="dock-title">Taskboard prompts</h2><button class="close" aria-label="Collapse Taskboard prompts">×</button></header>
       <div class="body">
@@ -82,12 +84,37 @@
   let interacted = false;
   let busy = false;
   let pending = null;
+  let noticeTimer;
+  let feedbackRevision = 0;
+  const defaultStatus = "Shortcuts fill the message box without sending.";
+  function clearNotice() {
+    const returnFocus = notice.contains(root.activeElement);
+    feedbackRevision++;
+    window.clearTimeout(noticeTimer);
+    notice.hidden = true;
+    root.querySelector(".notice-text").textContent = "";
+    if (returnFocus) toggle.focus();
+  }
+  function showNotice(message, warning = false) {
+    clearNotice();
+    root.querySelector(".notice-text").textContent = message;
+    notice.hidden = false;
+    const revision = feedbackRevision;
+    noticeTimer = window.setTimeout(() => {
+      if (revision === feedbackRevision) clearNotice();
+    }, warning ? 10000 : 5000);
+  }
+  root.querySelector(".notice-dismiss").addEventListener("click", () => {
+    clearNotice();
+    toggle.focus();
+  });
   function select(id) {
+    clearNotice();
     prompt.value = TaskboardCopilotPrompts.buildPrompt(id);
     buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.id === id)));
     pending = null;
     draftActions.hidden = true;
-    status.textContent = "Shortcuts fill the message box without sending.";
+    status.textContent = defaultStatus;
   }
   for (const shortcut of TaskboardCopilotPrompts.shortcuts) {
     const button = document.createElement("button");
@@ -107,11 +134,16 @@
     buttons.push(button);
   }
   function setOpen(open, focus = false) {
+    clearNotice();
     panel.hidden = !open;
     toggle.hidden = open;
     toggle.setAttribute("aria-expanded", String(open));
-    if (open) notice.hidden = true;
-    if (focus) (open ? buttons[0] : toggle).focus();
+    if (!open && pending) {
+      pending = null;
+      draftActions.hidden = true;
+      status.textContent = defaultStatus;
+    }
+    if (focus) (open ? busy ? root.querySelector(".close") : buttons[0] : toggle).focus();
   }
   function changeOpen(open, focus = true) {
     interacted = true;
@@ -122,13 +154,39 @@
   toggle.addEventListener("click", () => changeOpen(true));
   root.querySelector(".close").addEventListener("click", () => changeOpen(false));
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !panel.hidden) {
+    if (event.key === "Escape" && (!panel.hidden || !notice.hidden)) {
       event.stopPropagation();
       changeOpen(false);
     }
   });
+  function dismissOutside(event) {
+    if (!event.isTrusted || event.composedPath().includes(host)) return;
+    if (!panel.hidden) changeOpen(false, false);
+    else clearNotice();
+  }
+  document.addEventListener("pointerdown", dismissOutside);
+  document.addEventListener("click", dismissOutside);
+  document.addEventListener("keydown", (event) => {
+    if (!event.isTrusted || event.composedPath().includes(host)) return;
+    if (event.key === "Escape") {
+      if (!panel.hidden) changeOpen(false, false);
+      else clearNotice();
+    } else {
+      const editor = TaskboardCopilotComposer.findComposer();
+      if (editor && (event.target === editor || editor.contains(event.target))) clearNotice();
+    }
+  });
+  document.addEventListener("input", (event) => {
+    if (!event.isTrusted || busy) return;
+    const editor = TaskboardCopilotComposer.findComposer();
+    if (editor && (event.target === editor || editor.contains(event.target))) clearNotice();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) changeOpen(false, false);
+  });
   async function insert(approved = null) {
     if (busy) return;
+    clearNotice();
     const editor = TaskboardCopilotComposer.findComposer();
     if (!editor) {
       status.textContent = "Copilot’s message box is not ready or cannot be identified. Open a chat and try again, or copy the prompt instead.";
@@ -159,23 +217,25 @@
     // Close for the user's insertion action, not for the later editor check.
     // Copilot can replace its editor DOM while keeping the inserted draft.
     changeOpen(false, false);
+    const revision = feedbackRevision;
     let result;
-    try { result = await TaskboardCopilotComposer.insertPrompt(editor, prompt.value, current); }
+    try { result = await TaskboardCopilotComposer.insertPrompt(editor, prompt.value, current, () => revision === feedbackRevision); }
     catch { result = { state: "unconfirmed" }; }
     controls.forEach((button) => { button.disabled = false; });
     busy = false;
     pending = null;
+    // A closed/reopened panel, typing or an outside click supersedes feedback
+    // from an older operation. Its async completion must not resurrect a toast.
+    if (revision !== feedbackRevision) return;
     if (result.state === "inserted") {
-      changeOpen(false, false);
-      notice.textContent = "Prompt added. Review and send it in Copilot.";
-      notice.hidden = false;
+      status.textContent = "Prompt added. Review and send it in Copilot.";
+      showNotice(status.textContent);
     } else {
       const message = result.state === "changed"
         ? "The draft changed before insertion. Your new draft was kept; try again when ready."
         : "Insertion could not be confirmed. Review the message box before trying again, or copy the prompt instead.";
       status.textContent = message;
-      notice.textContent = message;
-      notice.hidden = false;
+      showNotice(message, true);
     }
   }
   root.querySelector(".insert").addEventListener("click", () => { void insert(); });
@@ -186,14 +246,23 @@
     status.textContent = "Your draft was kept. The shortcut remains in the preview.";
   });
   root.querySelector(".copy-fallback").addEventListener("click", async () => {
+    clearNotice();
+    const revision = feedbackRevision;
+    const text = prompt.value;
+    const copy = root.querySelector(".copy-fallback");
+    copy.disabled = true;
     try {
-      await navigator.clipboard.writeText(prompt.value);
+      await navigator.clipboard.writeText(text);
+      if (revision !== feedbackRevision) return;
       status.textContent = "Copied. Paste into Copilot, review, then send.";
+      changeOpen(false, false);
+      showNotice(status.textContent);
     } catch {
+      if (revision !== feedbackRevision) return;
       prompt.focus();
       prompt.select();
       status.textContent = "Clipboard unavailable. Press Ctrl+C (⌘C on Mac) to copy the selected prompt.";
-    }
+    } finally { copy.disabled = false; }
   });
   select("snapshot");
   refreshGuide();

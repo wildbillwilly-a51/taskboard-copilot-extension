@@ -10,7 +10,8 @@ const { chromium } = createRequire(process.env.COPILOT_TEST_REQUIRE_FROM || impo
 const extension = fileURLToPath(new URL("../extension/", import.meta.url));
 
 test("composer insertion through the actual isolated extension content scripts", async (suite) => {
-  const context = await chromium.launchPersistentContext(mkdtempSync(path.join(tmpdir(), "taskboard-composer-tests-")), {
+  const evidence = mkdtempSync(path.join(tmpdir(), "taskboard-composer-tests-"));
+  const context = await chromium.launchPersistentContext(evidence, {
     headless: true,
     executablePath: process.env.COPILOT_TEST_BROWSER_PATH || chromium.executablePath(),
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
@@ -174,7 +175,7 @@ test("composer insertion through the actual isolated extension content scripts",
       assert.equal(await page.evaluate(() => globalThis.sent), 0);
       await page.close();
     });
-    await suite.test("editor replacement keeps the inserted draft while the panel closes and a warning stays visible", async () => {
+    await suite.test("editor replacement verifies the retained prompt without a false warning", async () => {
       const page = await createPage(textarea);
       await page.evaluate(() => {
         document.querySelector("#composer").addEventListener("input", event => {
@@ -185,10 +186,134 @@ test("composer insertion through the actual isolated extension content scripts",
       });
       await choose(page, "snapshot");
       await page.locator("#prompt-panel").waitFor({ state: "hidden" });
-      await page.getByRole("status").filter({ hasText: "could not be confirmed" }).waitFor();
+      await inserted(page);
+      assert.equal(await page.locator(".notice").filter({ hasText: "could not be confirmed" }).count(), 0);
       assert.match(await page.locator("#composer").inputValue(), /Taskboard snapshot\.md/);
       assert.equal(await page.getByRole("button", { name: "Taskboard prompts", exact: true }).isVisible(), true);
       assert.equal(await page.evaluate(() => globalThis.sent), 0);
+      await page.close();
+    });
+    await suite.test("delayed Lexical span replacement is verified without inserting twice", async () => {
+      const page = await createPage('<span id="m365-chat-editor-target-element" role="textbox" aria-label="Message Copilot" contenteditable="true" data-lexical-editor="true"><p><br></p></span>');
+      await page.evaluate(() => {
+        globalThis.pastes = 0;
+        document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", event => {
+          event.preventDefault(); globalThis.pastes++;
+          const value = event.clipboardData.getData("text/plain");
+          setTimeout(() => {
+            const replacement = event.target.cloneNode();
+            const p = document.createElement("p"); p.textContent = value; replacement.append(p);
+            event.target.replaceWith(replacement);
+          }, 140);
+        });
+      });
+      await choose(page, "snapshot");
+      await inserted(page);
+      assert.match(await page.getByLabel("Message Copilot").innerText(), /^Today is /);
+      assert.equal(await page.evaluate(() => globalThis.pastes), 1);
+      assert.equal(await page.evaluate(() => globalThis.sent), 0);
+      await page.close();
+    });
+    await suite.test("different replacement text stays untouched and uncertain", async () => {
+      const page = await createPage(textarea);
+      await page.evaluate(() => document.querySelector("#composer").addEventListener("input", event => {
+        const replacement = event.target.cloneNode(); replacement.value = "A newer draft";
+        event.target.replaceWith(replacement);
+      }, { once: true }));
+      await choose(page, "snapshot");
+      await page.locator(".notice").filter({ hasText: "could not be confirmed" }).waitFor();
+      assert.equal(await page.getByLabel("Message Copilot").inputValue(), "A newer draft");
+      await page.close();
+    });
+    await suite.test("popup close, Escape and click-away cancel pending draft confirmation", async () => {
+      const page = await createPage(textarea, "Keep this draft");
+      const dock = page.locator("#taskboard-copilot-prompts");
+      for (const close of ["button", "escape", "outside"]) {
+        await choose(page, "snapshot");
+        await dock.getByRole("button", { name: "Replace draft", exact: true }).waitFor();
+        if (close === "button") await dock.locator(".close").click();
+        if (close === "escape") await dock.locator(".close").press("Escape");
+        if (close === "outside") await page.getByRole("heading", { name: "Copilot composer fixture" }).click();
+        await page.locator("#prompt-panel").waitFor({ state: "hidden" });
+        await dock.locator(".toggle").click();
+        assert.equal(await dock.locator(".draft-actions").isVisible(), false);
+        assert.equal(await page.getByLabel("Message Copilot").inputValue(), "Keep this draft");
+      }
+      await page.close();
+    });
+    await suite.test("late insertion verification cannot reopen feedback or steal popup focus", async () => {
+      const page = await createPage(textarea);
+      await page.evaluate(() => document.querySelector("#composer").addEventListener("input", event => {
+        const value = event.target.value;
+        const replacement = event.target.cloneNode(); replacement.value = "";
+        event.target.replaceWith(replacement);
+        setTimeout(() => { replacement.value = value; }, 250);
+      }, { once: true }));
+      await choose(page, "snapshot");
+      await page.locator("#taskboard-copilot-prompts .toggle").click();
+      assert.equal(await page.locator('[data-id="snapshot"]').isDisabled(), true);
+      await page.waitForTimeout(800);
+      assert.equal(await page.locator("#prompt-panel").isVisible(), true);
+      assert.equal(await page.locator(".notice").isVisible(), false);
+      assert.equal(await page.locator("#taskboard-copilot-prompts").evaluate(host => host.shadowRoot.activeElement?.className), "close");
+      await page.close();
+    });
+    await suite.test("warning dismissal works by button, Escape, click-away, typing and reopening", async () => {
+      const page = await createPage(rich);
+      await page.evaluate(() => document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", event => event.preventDefault()));
+      const dock = page.locator("#taskboard-copilot-prompts");
+      for (const action of ["button", "escape", "outside", "typing", "reopen", "send"]) {
+        await choose(page, "snapshot");
+        await dock.locator(".notice").waitFor();
+        if (action === "button") await dock.getByRole("button", { name: "Dismiss Taskboard message", exact: true }).click();
+        if (action === "escape") await dock.getByRole("button", { name: "Dismiss Taskboard message", exact: true }).press("Escape");
+        if (action === "outside") await page.getByRole("heading", { name: "Copilot composer fixture" }).click();
+        if (action === "typing") await page.getByLabel("Message Copilot").press("a");
+        if (action === "reopen") await dock.locator(".toggle").click();
+        if (action === "send") await page.getByRole("button", { name: "Send", exact: true }).click();
+        assert.equal(await dock.locator(".notice").isVisible(), false);
+        await page.getByLabel("Message Copilot").fill("");
+        if (await dock.locator(".toggle").isVisible()) await dock.locator(".toggle").click();
+      }
+      assert.equal(await page.evaluate(() => globalThis.sent), 1, "Only the explicit Send click may submit");
+      await page.close();
+    });
+    await suite.test("success and warning feedback expire and warnings remain available inside the panel", async () => {
+      const success = await createPage(textarea);
+      await choose(success, "snapshot"); await inserted(success);
+      await success.getByRole("button", { name: "Dismiss Taskboard message" }).focus();
+      await success.locator(".notice").waitFor({ state: "hidden", timeout: 6500 });
+      assert.equal(await success.locator("#taskboard-copilot-prompts").evaluate(host => host.shadowRoot.activeElement?.className), "toggle");
+      await success.close();
+      const page = await createPage(rich);
+      await page.evaluate(() => document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", event => event.preventDefault()));
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await choose(page, "snapshot");
+      await page.locator(".notice").waitFor();
+      const dismiss = await page.getByRole("button", { name: "Dismiss Taskboard message" }).boundingBox();
+      assert.ok(dismiss.x >= 0 && dismiss.x + dismiss.width <= 320 && dismiss.y + dismiss.height <= 568);
+      await page.screenshot({ path: path.join(evidence, "warning-dismissable-320-dark.png") });
+      await page.locator(".notice").waitFor({ state: "hidden", timeout: 11500 });
+      await page.locator("#taskboard-copilot-prompts .toggle").click();
+      await page.locator("#taskboard-copilot-prompts .status").filter({ hasText: "could not be confirmed" }).waitFor();
+      await page.screenshot({ path: path.join(evidence, "warning-expired-panel-320-dark.png") });
+      await page.close();
+    });
+    await suite.test("copy fallback closes the popup and preserves the existing composer draft", async () => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "https://m365.cloud.microsoft" });
+      const page = await createPage(textarea, "Preserve this draft");
+      const expected = await page.getByRole("textbox", { name: "Prompt preview · optional edits" }).inputValue();
+      await page.getByRole("button", { name: "Copy prompt instead", exact: true }).click();
+      await page.locator(".notice").filter({ hasText: "Copied." }).waitFor();
+      assert.equal(await page.locator("#prompt-panel").isVisible(), false);
+      // Windows clipboard text uses CRLF; compare the copied text losslessly
+      // apart from that platform newline representation.
+      assert.equal((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"), expected);
+      assert.equal(await page.getByLabel("Message Copilot").inputValue(), "Preserve this draft");
+      assert.equal(await page.evaluate(() => globalThis.sent), 0);
+      await page.getByRole("button", { name: "Dismiss Taskboard message" }).click();
+      assert.equal(await page.locator(".notice").isVisible(), false);
       await page.close();
     });
     await suite.test("an editor rejecting paste is not falsely reported as populated", async () => {
@@ -200,5 +325,6 @@ test("composer insertion through the actual isolated extension content scripts",
       await page.close();
     });
     assert.deepEqual(errors, []);
+    console.log("Composer lifecycle evidence: " + evidence);
   } finally { await context.close(); }
 });
