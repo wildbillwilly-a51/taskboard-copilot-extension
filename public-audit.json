@@ -7,7 +7,7 @@
     "extension/README.md": "936c2b2258c7d5ac5182ca4163b823557a1087910b92da70ffe306847c247e2f",
     "extension/background.mjs": "6016d944c5e0d004c3271968ce3965adee01e9991573f74405d4431564879826",
     "extension/composer.js": "b112705d09adc3c5ea934d2189af1874621eab13ef3e73745b627358685c85cc",
-    "extension/connection-dock.js": "b9b1a63cb4b84d1599e5e86547b28e46fb04986aa0e45142a653d9a505d34b81",
+    "extension/connection-dock.js": "51fd6c0ee3d701db6f0b49d221f119ec4953e541ea36a48d170b2a74cd1a14d9",
     "extension/connection-view.mjs": "a868fda5ed7c43aaeaf7352d4937220d9b89e41467aa8f29c8346485768c8fca",
     "extension/dock.js": "807e552abe30712924781f7eb9a7f598ba52cb4c116471e75802e281d437bee3",
     "extension/host-controller.mjs": "cb1532517f7269ba4c2a90a6a34f5d4b29943c0232630585b63b282c82551a8b",

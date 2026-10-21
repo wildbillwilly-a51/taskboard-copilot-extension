@@ -7,6 +7,7 @@
     :host { display:flex; flex-direction:column; align-items:flex-end; max-height:calc(100dvh - 88px); }
     .toggle,#connection-control,#connection-preparation { flex-shrink:0; }
     .panel { flex:1 1 auto; min-height:0; max-height:none; }
+    .split-guide { display:none !important; }
     #connection-control { display:block; width:min(350px,calc(100vw - 32px)); min-height:56px; margin:8px 0; font:16px/1.4 system-ui,sans-serif; color:inherit; border:1px solid #b18a22; background:#fff7df; }
     #connection-control[data-connected=true] { border-color:#348364; background:#e9f8f0; }
     #connection-control strong { display:block; font-size:16px; }
