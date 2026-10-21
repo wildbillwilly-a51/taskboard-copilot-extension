@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.2.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.3.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -49,7 +49,8 @@ unless you choose to replace them. Prompts are never sent automatically.
 The prompt panel closes when insertion starts. Draft-replacement confirmation
 stays open until you decide; insertion warnings remain visible outside the panel.
 
-When Copilot returns a compatible `taskboard-proposal` code block, click
+When Copilot returns a compatible `taskboard-proposal` code block or read-only
+Code editor, click
 **Review changes in Taskboard** beside it. Review, edit, select and approve
 changes on your signed-in Taskboard server. No task is changed by the extension
 alone. Microsoft page changes and tenant policy can affect detection/insertion.
@@ -75,8 +76,10 @@ code loading, mailbox scanning or Microsoft API integration in the extension.
   Disconnect removes its registration, local address and pending transfers,
   and revokes that site's optional access.
 
-The extension scans bounded `pre`/`code` elements for proposal markers; it does
-not collect conversation history. Only the selected proposal transfers, after
+The extension scans bounded `pre`/`code` elements and contiguous rendered lines
+in read-only code editors for proposal markers. Editable drafts, incomplete
+blocks and oversized proposals are ignored. It does not collect conversation
+history. Only the selected proposal transfers, after
 a real user click. Its body stays in extension session storage for at most
 15 minutes (expired records are discarded on the next access), is bound to one
 review tab and the configured origin, and is cleared after acknowledgement.
