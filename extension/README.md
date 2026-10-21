@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.3.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.4.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -23,8 +23,10 @@ server. Workplace browser policies may restrict unpacked extensions.
 
 ## Use
 
-The toolbar, Settings page and Copilot prompt dock show a persistent connection
-indicator and your configured site. A green **Taskboard connected** card means
+The toolbar and Settings page show your connection status and configured site.
+In Copilot, connection status and Split View guidance appear only inside the
+open **Taskboard prompts** panel. Closing it also hides those cards; background
+connection updates do not reopen them. A green **Taskboard connected** card means
 the browser has site access and the review bridge is registered. It does not
 verify your server session or network reachability; sign in normally on
 Taskboard. **Connect Taskboard** / **Manage Taskboard connection** opens Settings.

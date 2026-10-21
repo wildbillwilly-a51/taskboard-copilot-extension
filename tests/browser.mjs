@@ -54,7 +54,46 @@ try {
   const copilot = await context.newPage();
   copilot.on("pageerror", error => errors.push(error.message));
   await copilot.goto("https://m365.cloud.microsoft/chat");
-  await copilot.locator("#taskboard-copilot-prompts").getByRole("button", { name: /Taskboard connected/ }).waitFor();
+  const dock = copilot.locator("#taskboard-copilot-prompts");
+  const connection = dock.locator("#connection-control");
+  const preparation = dock.locator("#connection-preparation");
+  await dock.locator('#connection-control[data-connected="true"]').waitFor({ state: "attached" });
+  assert.equal(await connection.isVisible(), false, "Connection banner must start inside the closed popup");
+  // Refresh connection and Split View state while closed. Neither may reopen it.
+  await copilot.bringToFront();
+  await worker.evaluate(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    await chrome.storage.session.set({ splitPairs: [{ sourceId: -1, tabId: tab.id }] });
+    await chrome.storage.local.set({ dockFixtureRefresh: 1 });
+  });
+  await preparation.filter({ hasText: "one browser step left" }).waitFor({ state: "attached" });
+  assert.equal(await preparation.isVisible(), false);
+  for (const [width, height, colorScheme] of [[1280, 780, "light"], [390, 568, "dark"], [320, 568, "light"]]) {
+    await copilot.setViewportSize({ width, height });
+    await copilot.emulateMedia({ colorScheme });
+    await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
+    assert.equal(await connection.isVisible(), true);
+    assert.equal(await preparation.isVisible(), true);
+    const card = await connection.boundingBox();
+    const panel = await dock.locator(".panel").boundingBox();
+    assert.ok(card.x >= panel.x && card.x + card.width <= panel.x + panel.width, "Connection card must fit inside popup");
+    await copilot.screenshot({ path: path.join(root, `dock-open-${width}.png`) });
+    await dock.getByRole("button", { name: "Collapse Taskboard prompts", exact: true }).click();
+    assert.equal(await connection.isVisible(), false);
+    assert.equal(await preparation.isVisible(), false);
+    await copilot.screenshot({ path: path.join(root, `dock-closed-${width}.png`) });
+    await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
+    await dock.getByRole("button", { name: "Collapse Taskboard prompts", exact: true }).press("Escape");
+    assert.equal(await connection.isVisible(), false, "Escape must also hide the connection banner");
+    assert.equal(await preparation.isVisible(), false);
+  }
+  await copilot.reload();
+  await dock.locator('#connection-control[data-connected="true"]').waitFor({ state: "attached" });
+  await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).waitFor();
+  assert.equal(await connection.isVisible(), false, "Reload must retain the closed popup without its banner");
+  assert.equal(await preparation.isVisible(), false);
+  await copilot.setViewportSize({ width: 1280, height: 780 });
+  await copilot.emulateMedia({ colorScheme: "light" });
   await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
   assert.equal(await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).count(), 1);
   assert.equal(await copilot.locator("#negative-candidates .taskboard-copilot-proposal-review").count(), 0);
@@ -81,10 +120,22 @@ try {
     await source.locator('[data-line-index="2"]').evaluate(el => el.remove());
     await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor({ state: "detached" });
   }
+  await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
+  await dock.getByRole("button", { name: "Read snapshot", exact: false }).click();
+  await dock.getByRole("button", { name: "Replace draft", exact: true }).waitFor();
+  assert.equal(await connection.isVisible(), true, "Draft replacement confirmation stays inside the open popup");
+  assert.equal(await copilot.getByLabel("Message Copilot").inputValue(), "Unsent draft");
+  await dock.getByRole("button", { name: "Replace draft", exact: true }).click();
+  await dock.locator(".notice").filter({ hasText: "Prompt added" }).waitFor();
+  assert.equal(await connection.isVisible(), false, "Prompt insertion must close the banner with the popup");
+  assert.equal(await preparation.isVisible(), false);
   await options.bringToFront();
   await options.getByRole("button", { name: "Disconnect", exact: true }).click();
   await options.locator("#connection[data-state=disconnected]").waitFor();
-  await copilot.locator("#taskboard-copilot-prompts").getByRole("button", { name: /Taskboard not connected/ }).waitFor();
+  await connection.filter({ hasText: "Taskboard not connected" }).waitFor({ state: "attached" });
+  assert.equal(await connection.isVisible(), false, "A background connection change must not reveal the closed banner");
+  await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
+  await dock.getByRole("button", { name: /Taskboard not connected/ }).waitFor();
   assert.deepEqual(await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()), []);
   assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers), {});
   const evidence = path.join(root, "evidence"); mkdirSync(evidence);
