@@ -156,7 +156,12 @@
     draftActions.hidden = true;
     const controls = [...buttons, root.querySelector(".insert"), root.querySelector(".replace")];
     controls.forEach((button) => { button.disabled = true; });
-    const result = await TaskboardCopilotComposer.insertPrompt(editor, prompt.value, current);
+    // Close for the user's insertion action, not for the later editor check.
+    // Copilot can replace its editor DOM while keeping the inserted draft.
+    changeOpen(false, false);
+    let result;
+    try { result = await TaskboardCopilotComposer.insertPrompt(editor, prompt.value, current); }
+    catch { result = { state: "unconfirmed" }; }
     controls.forEach((button) => { button.disabled = false; });
     busy = false;
     pending = null;
@@ -165,10 +170,12 @@
       notice.textContent = "Prompt added. Review and send it in Copilot.";
       notice.hidden = false;
     } else {
-      status.textContent = result.state === "changed"
+      const message = result.state === "changed"
         ? "The draft changed before insertion. Your new draft was kept; try again when ready."
         : "Insertion could not be confirmed. Review the message box before trying again, or copy the prompt instead.";
-      status.scrollIntoView({ block: "nearest" });
+      status.textContent = message;
+      notice.textContent = message;
+      notice.hidden = false;
     }
   }
   root.querySelector(".insert").addEventListener("click", () => { void insert(); });

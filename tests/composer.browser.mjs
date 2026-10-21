@@ -64,6 +64,7 @@ test("composer insertion through the actual isolated extension content scripts",
       for (const id of ["snapshot", "priorities", "meeting", "review"]) {
         await choose(page, id);
         await inserted(page);
+        assert.equal(await page.locator("#prompt-panel").isVisible(), false);
         assert.match(await page.locator("#composer").inputValue(), /Taskboard snapshot\.md/);
         assert.equal(await page.locator("#composer").inputValue(), await page.evaluate(() => globalThis.model));
         assert.equal(await page.evaluate(() => document.activeElement.id), "composer");
@@ -170,6 +171,23 @@ test("composer insertion through the actual isolated extension content scripts",
       await inserted(page);
       assert.match(await page.evaluate(() => globalThis.model), /^Today is /);
       assert.doesNotMatch(await page.evaluate(() => globalThis.model), /Existing rich draft/);
+      assert.equal(await page.evaluate(() => globalThis.sent), 0);
+      await page.close();
+    });
+    await suite.test("editor replacement keeps the inserted draft while the panel closes and a warning stays visible", async () => {
+      const page = await createPage(textarea);
+      await page.evaluate(() => {
+        document.querySelector("#composer").addEventListener("input", event => {
+          const replacement = event.target.cloneNode();
+          replacement.value = event.target.value;
+          event.target.replaceWith(replacement);
+        }, { once: true });
+      });
+      await choose(page, "snapshot");
+      await page.locator("#prompt-panel").waitFor({ state: "hidden" });
+      await page.getByRole("status").filter({ hasText: "could not be confirmed" }).waitFor();
+      assert.match(await page.locator("#composer").inputValue(), /Taskboard snapshot\.md/);
+      assert.equal(await page.getByRole("button", { name: "Taskboard prompts", exact: true }).isVisible(), true);
       assert.equal(await page.evaluate(() => globalThis.sent), 0);
       await page.close();
     });

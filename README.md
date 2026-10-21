@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.1.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.2.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -46,6 +46,8 @@ named `Taskboard snapshot.md` in `Documents/Taskboard`. Ask Copilot to confirm
 the snapshot ID and generated time it read. Your server/connector must provide
 that file; neither is included in this extension. Existing drafts are preserved
 unless you choose to replace them. Prompts are never sent automatically.
+The prompt panel closes when insertion starts. Draft-replacement confirmation
+stays open until you decide; insertion warnings remain visible outside the panel.
 
 When Copilot returns a compatible `taskboard-proposal` code block, click
 **Review changes in Taskboard** beside it. Review, edit, select and approve
