@@ -83,7 +83,7 @@ test("in-flight proposals remain tied to the configured origin", async () => {
   f.grants.add("https://board.example/*");
   await f.targets.save("https://board.example");
   const reviews = createReviewController(f.api, { getReviewUrl: f.targets.getReviewUrl });
-  const body = JSON.stringify({ type: "taskboard-proposal", version: 1, changes: [] });
+  const body = JSON.stringify({ type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "target-fixture-1", changes: [{ op: "update", task: "12345678", set: { status: "active" }, reason: "Requested" }] });
   const { transferId } = await reviews.begin({ url: "https://m365.cloud.microsoft/chat", tab: { id: 1, windowId: 2 } }, body);
   const receiver = { url: "https://board.example/copilot-review", tab: { id: 10 } };
   assert.ok(await reviews.pending(receiver, transferId));

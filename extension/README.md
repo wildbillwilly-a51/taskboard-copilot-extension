@@ -7,7 +7,7 @@ your server's review screen. Task changes require your approval there.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.6.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.5.7.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -70,6 +70,11 @@ changes**, review the inserted request and send it yourself. Copilot must return
 the proposal JSON before the review button can appear. Conditional advice and
 missing decisions stay outside the proposal; clarify them with Copilot first.
 Plain recommendation text by itself does not create a Taskboard review entry.
+Proposals need 1–20 concrete changes. Empty, over-limit or malformed proposals
+show a correction message beside the JSON instead of an unusable review button.
+Ask Copilot to correct the block; the button appears when it becomes valid.
+Missing decisions remain questions. For larger requests, review at most 20
+changes, approve them, then re-read the refreshed snapshot before the next batch.
 
 To update, replace your extracted runtime with the new release and click
 **Reload** on the browser's extensions page, then refresh both website tabs.

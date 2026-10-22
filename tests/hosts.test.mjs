@@ -146,6 +146,8 @@ test("all five shortcuts ground in the named snapshot and preserve manual review
     assert.match(text, /same issue and compatible dates/);
     assert.match(text, /review and approve them in Taskboard/);
     assert.match(text, /before approval/);
+    assert.match(text, /1–20 concrete changes/);
+    assert.match(text, /Never return an empty changes array/);
   }
   assert.throws(() => prompts.buildPrompt("bad"), /Unknown/);
 });

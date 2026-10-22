@@ -3,7 +3,7 @@ import test from "node:test";
 import { createReviewController, isCopilotPage, isTaskboardReviewPage } from "../extension/review-controller.mjs";
 
 const TASKBOARD_REVIEW_URL = "https://board.example/copilot-review";
-const body = JSON.stringify({ type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "test-request-1", changes: [] });
+const body = JSON.stringify({ type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "test-request-1", changes: [{ op: "update", task: "12345678", set: { title: "Updated title" }, reason: "Requested rename" }] });
 function fixture() {
   const data = {}, tabs = new Map(), calls = [];
   const api = {
@@ -55,4 +55,37 @@ test("untrusted origins, unsupported payloads, oversized blocks and expired hand
   assert.equal(await f.controller.pending({ tab: { id: tab.id }, url: tab.url }, result.transferId), null);
   assert.equal(isCopilotPage("https://copilot.cloud.microsoft/chat"), true);
   assert.equal(isTaskboardReviewPage("https://board.example/copilot-review-evil", TASKBOARD_REVIEW_URL), false);
+});
+test("invalid contracts never open a tab or persist a transfer; both count boundaries are enforced", async () => {
+  const proposal = JSON.parse(body);
+  const change = proposal.changes[0];
+  const invalid = [
+    { ...proposal, changes: [] },
+    { ...proposal, changes: Array(21).fill({ op: "note", task: "12345678", text: "Follow up", reason: "Requested" }) },
+    { ...proposal, changes: {} },
+    { ...proposal, snapshotId: "unknown" },
+    { ...proposal, requestId: "short" },
+    { ...proposal, extra: "unsupported" },
+    ...[
+      null, { ...change, task: "bad" }, { ...change, reason: "" },
+      { ...change, op: "delete" }, { ...change, set: {} },
+      { ...change, set: { status: "completed" } },
+      { ...change, set: { owner: "someone" } },
+      { ...change, set: { dueAt: "2026-10-22" } },
+      { ...change, set: { dueAt: "2026-02-30T12:00:00Z" } },
+      { op: "create", set: { title: "Missing bucket" }, reason: "Requested" },
+      { op: "note", task: "12345678", text: "", reason: "Requested" },
+    ].map(item => ({ ...proposal, changes: [item] })),
+    { ...proposal, changes: [change, { ...change, task: "1234-5678" }] },
+  ];
+  for (const value of invalid) {
+    const f = fixture();
+    await assert.rejects(f.controller.begin(f.sender, JSON.stringify(value)));
+    assert.equal(f.calls.length, 0, JSON.stringify(value));
+    assert.deepEqual(f.data, {}, "Invalid payloads must not reach session storage");
+  }
+  const f = fixture();
+  const twenty = { ...proposal, changes: Array.from({ length: 20 }, (_, i) => ({ op: "note", task: "12345678", text: `Note ${i}`, reason: "Requested" })) };
+  await f.controller.begin(f.sender, JSON.stringify(twenty));
+  assert.equal(f.calls.length, 1, "20 real changes remain transferable");
 });

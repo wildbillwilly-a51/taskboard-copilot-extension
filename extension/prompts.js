@@ -19,6 +19,7 @@
       "When connecting a task to mail, a meeting, or a chat, require the same issue and compatible dates; a shared topic alone is not enough. Cite task IDs and supporting sources.",
       "Answer questions normally. When I request task changes, follow the snapshot’s taskboard-proposal format so I can review and approve them in Taskboard. Do not claim changes are applied before approval.",
       "The browser extension adds Review changes in Taskboard beside a valid taskboard-proposal JSON code block. Explain that I click that button in Copilot, then review and approve in Taskboard. You do not need a Taskboard action tool to prepare the JSON. Keep citations and explanatory prose outside the JSON, and copy the actual Snapshot ID and task IDs from the file.",
+      "A proposal must contain 1–20 concrete changes. Never return an empty changes array or placeholder changes. If no change is ready, explain the specific missing decision without emitting proposal JSON. If more than 20 changes are ready, prepare the first batch of at most 20 and explain what remains; after approval, re-read the refreshed snapshot before preparing another batch.",
       "",
       shortcut.question,
     ].join("\n");

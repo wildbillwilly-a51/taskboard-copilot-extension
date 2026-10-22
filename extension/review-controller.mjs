@@ -1,4 +1,5 @@
 export const TASKBOARD_REVIEW_URL = null;
+import "./proposal-contract.js";
 const MAX_BYTES = 32768;
 const TTL = 15 * 60 * 1000;
 export function isCopilotPage(url) {
@@ -25,9 +26,9 @@ export function createReviewController(api, { getReviewUrl = async () => TASKBOA
       const reviewUrl = await getReviewUrl();
       if (!reviewUrl) throw Error("Set your Taskboard address in the extension's Settings first.");
       if (typeof proposal !== "string" || new TextEncoder().encode(proposal).length > MAX_BYTES) throw Error("Proposal is missing or too large.");
-      let parsed;
-      try { parsed = JSON.parse(proposal); } catch { throw Error("Ask Copilot to regenerate a valid proposal block."); }
-      if (parsed?.type !== "taskboard-proposal" || parsed.version !== 1 || !Array.isArray(parsed.changes)) throw Error("This is not a Taskboard proposal.");
+      // Revalidate at the transfer boundary, even if the displayed block was
+      // valid earlier. Never store or open a review for an invalid contract.
+      globalThis.TaskboardCopilotProposal.parse(proposal);
       const pending = await transfers();
       for (const transfer of Object.values(pending)) if (transfer.proposal === proposal) {
         try {

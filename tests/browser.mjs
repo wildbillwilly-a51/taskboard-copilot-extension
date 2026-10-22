@@ -58,7 +58,7 @@ try {
   await options.locator("#connection[data-state=connected]").waitFor();
   const scripts = await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
   assert.deepEqual(scripts[0].matches, ["https://board.example/copilot-review*"]);
-  const proposal = { type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "public-fixture-1", changes: [{ op: "note", task: "abc123", text: "Fixture note", reason: "Fixture only" }] };
+  const proposal = { type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "public-fixture-1", changes: [{ op: "note", task: "abc12345", text: "Fixture note", reason: "Fixture only" }] };
   const editorMode = process.env.COPILOT_TEST_CODE_EDITOR === "1";
   const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   function editor(value, attrs = 'aria-readonly="true"', skip = -1) {
@@ -147,6 +147,31 @@ try {
   await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).evaluate(button => button.click());
   await copilot.getByText("Click this button yourself to transfer the proposal.", { exact: true }).waitFor();
   assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers || {}), {});
+  // Exercise streaming edits in place: invalid proposals explain recovery in
+  // Copilot, never transfer, and become reviewable once corrected.
+  const updateBlock = async value => {
+    if (editorMode) {
+      const html = JSON.stringify(value, null, 2).split("\n").map((line, index) => `<div data-line-index="${index}">${escape(line)}</div>`).join("");
+      await copilot.locator('#chosen-proposal [role="textbox"]').evaluate((el, html) => { el.innerHTML = html; }, html);
+    } else await copilot.locator("#chosen-proposal code").evaluate((el, text) => { el.textContent = text; }, JSON.stringify(value));
+  };
+  for (const [value, message] of [
+    [{ ...proposal, changes: [] }, "No task changes were included."],
+    [{ ...proposal, changes: Array(21).fill(proposal.changes[0]) }, "This proposal has 21 changes."],
+    [{ ...proposal, changes: [{ ...proposal.changes[0], task: "bad" }] }, "Use a task ID from the snapshot."],
+  ]) {
+    await updateBlock(value);
+    await copilot.getByText(message, { exact: false }).waitFor();
+    assert.equal(await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).count(), 0);
+    assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers || {}), {});
+  }
+  await copilot.setViewportSize({ width: 390, height: 568 });
+  await copilot.emulateMedia({ colorScheme: "dark" });
+  await copilot.screenshot({ path: path.join(root, "invalid-proposal-mobile-dark.png"), fullPage: true });
+  await updateBlock(proposal);
+  await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
+  await copilot.setViewportSize({ width: 1280, height: 780 });
+  await copilot.emulateMedia({ colorScheme: "light" });
   const proposalShot = path.join(root, `proposal-${editorMode ? "editor" : "legacy"}.png`);
   await copilot.screenshot({ path: proposalShot, fullPage: true });
   const created = context.waitForEvent("page");

@@ -1,23 +1,21 @@
 # Handoff
 
 ## Objective
-Deliver version 1.5.6 with a clear recommendations-to-proposal workflow.
+Deliver version 1.5.7 with proposal validation before review transfer.
 
 ## Current State
-Review stale tasks requests recommendations plus proposal JSON for concrete,
-supported changes. Prepare changes explicitly turns existing chat recommendations
-and established decisions into proposal JSON. Uncertain advice and missing
-choices remain questions; ordinary acknowledgements do not prove completion.
-The prompt explains that the extension supplies Review changes in Taskboard
-beside valid JSON, with approval required in Taskboard. Prose alone is not a
-proposal. No conversation scanning, guessed changes or server/permission changes.
-Existing notice dismissal/expiry, draft protection and manual sending remain.
+The extension validates the complete bounded proposal contract before showing a
+review action and again before storing/transferring it. Empty and over-limit
+proposals explain recovery in Copilot without opening a failing review tab.
+Corrected blocks become reviewable in place. Prompts require 1-20 concrete
+changes and retain missing choices as questions. No invented placeholder edits,
+conversation scanning, automatic sending or permission/server changes.
 
 ## Validation Completed
-19 public units and 20 composer results per Chromium/Brave engine passed,
-including all five actions, narrow Prepare changes insertion and no automatic
-send. Both engines passed actual editor-proposal transfer/acknowledgement and
-Settings flows. Earlier valid legacy/native-toolbar evidence remains applicable.
-Fresh-profile fixtures test extension behavior; actual tenant output compliance
-requires sending the prepared prompt and receiving valid proposal JSON.
+20 public units and Chromium/Brave editor/legacy browser flows cover invalid
+counts, malformed operations, in-place correction, trusted exact transfer,
+acknowledgement, preserved drafts, settings and popup lifecycle. Private release
+validation checks the generated validator against the authoritative server
+parser. Composer/native-toolbar behavior is unchanged from the earlier release.
+Fresh-profile fixtures do not certify actual Copilot output compliance.
 Never publish profiles, personalized settings or private source history.
