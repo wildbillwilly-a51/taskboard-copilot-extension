@@ -2,12 +2,13 @@
 
 Open the real Microsoft 365 Copilot website beside your work in Brave or Chrome.
 Taskboard prompt shortcuts fill Copilot's message box for you to review and send.
-An optional Taskboard connection transfers a selected task-change proposal to
-your server's review screen. Task changes require your approval there.
+An optional Taskboard connection shows readable task changes with Apply as your
+single approval. Review details remains available when you want to inspect or
+edit a proposal first. Your server checks permissions and conflicts.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.5.7.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.6.0.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -58,23 +59,35 @@ review. Closing the panel cancels stale replacement confirmations; late
 insertion results cannot reopen feedback or steal focus. When Copilot replaces
 its editor, retained prompt text is verified without inserting it a second time.
 
-When Copilot returns a compatible `taskboard-proposal` code block or read-only
-Code editor, click
-**Review changes in Taskboard** beside it. Review, edit, select and approve
-changes on your signed-in Taskboard server. No task is changed by the extension
-alone. Microsoft page changes and tenant policy can affect detection/insertion.
+Describe changes normally in Copilot, such as “Rename this task and move it to
+next Friday.” Copilot should explain the changes and return the snapshot's
+proposal JSON. The extension builds a readable card from that validated JSON.
+**Apply 2 changes** is your single approval; Taskboard checks and applies those
+exact changes without a second approval screen. The card reports success only
+after Taskboard confirms the outcome. **Review details** queues the proposal for
+optional inspection/editing and leaves the board unchanged. **Technical details**
+expands the original JSON. Invalid or incomplete blocks cannot be applied.
 
-**Review stale tasks** requests recommendations plus a proposal for concrete,
-supported changes. For recommendations already in a chat, choose **Prepare
-changes**, review the inserted request and send it yourself. Copilot must return
-the proposal JSON before the review button can appear. Conditional advice and
-missing decisions stay outside the proposal; clarify them with Copilot first.
-Plain recommendation text by itself does not create a Taskboard review entry.
-Proposals need 1–20 concrete changes. Empty, over-limit or malformed proposals
-show a correction message beside the JSON instead of an unusable review button.
-Ask Copilot to correct the block; the button appears when it becomes valid.
-Missing decisions remain questions. For larger requests, review at most 20
-changes, approve them, then re-read the refreshed snapshot before the next batch.
+A cooperating Taskboard tab is reused without navigation or losing its selected
+task. Apply keeps focus in Copilot; Review details opens Taskboard's activity
+panel. If no compatible tab is open, a separate Taskboard page handles the
+transfer and normal sign-in. Older servers reject single-click Apply explicitly;
+Review details remains compatible with the existing manual approval flow.
+
+Taskboard's **Discuss this task in Copilot** prepares the selected task's context
+in a paired Copilot tab. Existing drafts still require your replacement choice.
+Nothing sends automatically. **Copilot activity** retains received proposals and
+applied changes; conflicts stay pending for attention. **Continue in Copilot**
+prepares a confirmed-result message for you to send. The snapshot must refresh
+before another change to the same fields. These controls require the matching
+Taskboard conversational update as well as this extension; install them together.
+
+**Review stale tasks** requests recommendations plus concrete supported changes.
+**Prepare changes** is a recovery shortcut for existing recommendation prose.
+Missing decisions remain questions. Proposals need 1–20 concrete changes; empty,
+over-limit or malformed proposals show correction guidance instead of Apply.
+For larger requests, apply at most 20, re-read the refreshed snapshot, then prepare
+the next batch. No truncation, guessed tasks or placeholder changes.
 
 To update, replace your extracted runtime with the new release and click
 **Reload** on the browser's extensions page, then refresh both website tabs.
@@ -90,7 +103,7 @@ code loading, mailbox scanning or Microsoft API integration in the extension.
 
 - `storage`: browser-local preferences and temporary session handoffs.
 - `clipboardWrite`: the explicit Copy prompt fallback.
-- `scripting`: registers the review bridge only at your chosen site's review page.
+- `scripting`: registers the bridge at your chosen site; it activates only on the board and activity pages.
 - Static content scripts run on the two declared Microsoft 365 Copilot hosts.
 - Optional HTTPS host access is declared so an instance can be chosen later.
   It is requested for exactly the site you enter, never for all sites at once.
@@ -100,10 +113,11 @@ code loading, mailbox scanning or Microsoft API integration in the extension.
 The extension scans bounded `pre`/`code` elements and contiguous rendered lines
 in read-only code editors for proposal markers. Editable drafts, incomplete
 blocks and oversized proposals are ignored. It does not collect conversation
-history. Only the selected proposal transfers, after
-a real user click. Its body stays in extension session storage for at most
+history. Only the selected proposal transfers after a real user click. A separate real
+Taskboard context-button click prepares just its bounded prompt in Copilot. Its body stays in extension session storage for at most
 15 minutes (expired records are discarded on the next access), is bound to one
-review tab and the configured origin, and is cleared after acknowledgement.
+review tab and the configured origin, and is cleared after completion/acknowledgement. A pending task-context prompt is
+also tab-bound and expires after 15 minutes; it is cleared when prepared or disconnected.
 The review URL contains an opaque transfer ID, not the proposal body. Your
 Taskboard server stores proposals and approved changes under its own policy.
 Website content, Microsoft 365 and your server have their own privacy policies.

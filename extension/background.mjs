@@ -41,7 +41,35 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return true;
   }
   if (message?.type === "review-proposal") {
-    void reviews.begin(sender, message.proposal).then(result => respond({ ok: true, ...result }), error => respond({ ok: false, error: error.message }));
+    void reviews.begin(sender, message.proposal, message.intent, message.clientToken).then(result => respond({ ok: true, ...result }), error => respond({ ok: false, error: error.message }));
+    return true;
+  }
+  if (message?.type === "review-completed") {
+    void reviews.complete(sender, message.transferId, message.result).then(() => respond({ ok: true }), () => respond({ ok: false }));
+    return true;
+  }
+  if (message?.type === "open-discussion") {
+    void (async () => {
+      if (!await reviews.canDiscuss(sender) || typeof message.prompt !== "string" || !message.prompt.trim() || message.prompt.length > 8192) throw Error("Open this task from your connected Taskboard.");
+      const result = await open("split", sender.tab);
+      const discussion = { id: crypto.randomUUID(), prompt: message.prompt, tabId: result.tabId, createdAt: Date.now() };
+      await chrome.storage.session.set({ copilotDiscussion: discussion });
+      try { await chrome.tabs.sendMessage(result.tabId, { type: "prepare-discussion", ...discussion }); } catch { /* Content script asks again when ready. */ }
+      return { ok: true };
+    })().then(respond, error => respond({ ok: false, error: error.message }));
+    return true;
+  }
+  if (["discussion-ready", "discussion-received"].includes(message?.type)) {
+    void (async () => {
+      if (!sender.tab || !["m365.cloud.microsoft", "copilot.cloud.microsoft"].includes(new URL(sender.url).hostname) || new URL(sender.url).protocol !== "https:") return null;
+      const { copilotDiscussion } = await chrome.storage.session.get("copilotDiscussion");
+      if (!copilotDiscussion || copilotDiscussion.tabId !== sender.tab.id || Date.now() - copilotDiscussion.createdAt > 15 * 60 * 1000) return null;
+      if (message.type === "discussion-received") {
+        if (message.id === copilotDiscussion.id) await chrome.storage.session.set({ copilotDiscussion: null });
+        return null;
+      }
+      return copilotDiscussion;
+    })().then(respond, () => respond(null));
     return true;
   }
   if (message?.type === "review-ready") {

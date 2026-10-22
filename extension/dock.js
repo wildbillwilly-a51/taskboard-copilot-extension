@@ -56,7 +56,7 @@
       <div class="body">
       <p class="split-guide" hidden></p>
       <p>Choose a shortcut to fill Copilot’s message box. Review the prompt there, then send it yourself.</p>
-      <p>Ask Copilot for task changes, then use <strong>Review changes in Taskboard</strong> beside its proposal block. Your approval is required.</p>
+      <p>Ask Copilot for task changes, then click <strong>Apply</strong> on its readable change card. That click is your approval. <strong>Review details</strong> is optional.</p>
       <div class="shortcuts"></div>
       <label for="prompt">Prompt preview · optional edits</label>
       <textarea id="prompt" spellcheck="false"></textarea>
@@ -269,4 +269,18 @@
   void chrome.storage.local.get("dockOpen").then(({ dockOpen }) => {
     if (!interacted) setOpen(dockOpen === true);
   }).catch(() => {});
+  const discussions = new Set();
+  function prepareDiscussion(value) {
+    if (!value?.id || typeof value.prompt !== "string" || value.prompt.length > 8192 || discussions.has(value.id)) return;
+    discussions.add(value.id); interacted = true;
+    clearNotice(); prompt.value = value.prompt;
+    buttons.forEach(button => button.setAttribute("aria-pressed", "false"));
+    pending = null; draftActions.hidden = true;
+    setOpen(true);
+    if (busy) status.textContent = "Task context is ready. Choose Insert into Copilot when the current insertion finishes.";
+    else void insert();
+    void chrome.runtime.sendMessage({ type: "discussion-received", id: value.id }).catch(() => {});
+  }
+  chrome.runtime.onMessage.addListener(message => { if (message?.type === "prepare-discussion") prepareDiscussion(message); });
+  void chrome.runtime.sendMessage({ type: "discussion-ready" }).then(prepareDiscussion).catch(() => {});
 })();

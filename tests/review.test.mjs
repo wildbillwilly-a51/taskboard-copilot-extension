@@ -89,3 +89,39 @@ test("invalid contracts never open a tab or persist a transfer; both count bound
   await f.controller.begin(f.sender, JSON.stringify(twenty));
   assert.equal(f.calls.length, 1, "20 real changes remain transferable");
 });
+test("Apply reuses a capable board tab without navigating, closing or focusing it", async () => {
+  const f = fixture();
+  const url = new URL(TASKBOARD_REVIEW_URL).origin + "/?taskId=selected";
+  f.api.tabs.query = async () => [{ id: 45, url, windowId: 5 }];
+  const messages = [];
+  f.api.tabs.sendMessage = async (id, message) => { messages.push({ id, message }); return message.type === "review-capabilities" ? { protocol: 2, url } : { ok: true }; };
+  let focused = false;
+  f.api.tabs.update = async () => { focused = true; };
+  const token = crypto.randomUUID();
+  const { transferId } = await f.controller.begin(f.sender, body, "apply", token);
+  assert.equal(f.calls.length, 0);
+  assert.equal(focused, false);
+  const receiver = { url, tab: { id: 45 } };
+  assert.deepEqual(await f.controller.pending(receiver, transferId), { transferId, proposal: body, intent: "apply" });
+  await f.controller.complete({ ...receiver, tab: { id: 99 } }, transferId, { ok: true, message: "Applied" });
+  assert.ok(await f.controller.pending(receiver, transferId));
+  await f.controller.complete(receiver, transferId, { ok: true, message: "Applied", type: "injected-type", prompt: "must not forward" });
+  assert.deepEqual(messages.at(-1), { id: f.sender.tab.id, message: { type: "proposal-result", transferId, requestId: "test-request-1", clientToken: token, ok: true, message: "Applied" } });
+  assert.equal(await f.controller.pending(receiver, transferId), null);
+});
+test("older or busy board tabs fall back to an isolated review tab", async () => {
+  const f = fixture();
+  f.api.tabs.query = async () => [{ id: 45, url: new URL(TASKBOARD_REVIEW_URL).origin, windowId: 5 }];
+  f.api.tabs.sendMessage = async () => ({ protocol: 1 });
+  await f.controller.begin(f.sender, body, "apply");
+  assert.equal(f.calls.length, 1);
+  assert.match(f.calls[0].url, /copilot-review\?transfer=/);
+});
+test("approval tokens and task-discussion senders are bounded to the configured site", async () => {
+  const f = fixture();
+  await assert.rejects(f.controller.begin(f.sender, body, "apply", "x".repeat(40000)));
+  assert.equal(f.calls.length, 0);
+  assert.equal(await f.controller.canDiscuss({ url: new URL(TASKBOARD_REVIEW_URL).origin, tab: { id: 1 } }), true);
+  assert.equal(await f.controller.canDiscuss({ url: new URL(TASKBOARD_REVIEW_URL).origin + "/api/tasks", tab: { id: 1 } }), false);
+  assert.equal(await f.controller.canDiscuss({ url: "https://other.example/", tab: { id: 1 } }), false);
+});

@@ -7,7 +7,7 @@ export function reviewTarget(input) {
     throw Error("Use an HTTPS Taskboard address without credentials, a query, or a fragment.");
   }
   if (["m365.cloud.microsoft", "copilot.cloud.microsoft"].includes(url.hostname)) throw Error("Enter your Taskboard address, not the Copilot address.");
-  return { url: `${url.origin}/copilot-review`, origin: `${url.origin}/*`, match: `${url.origin}/copilot-review*` };
+  return { url: `${url.origin}/copilot-review`, origin: `${url.origin}/*`, match: `${url.origin}/*` };
 }
 export function createTargetController(api) {
   let queue = Promise.resolve();
@@ -29,7 +29,7 @@ export function createTargetController(api) {
   }
   async function forget() {
     await api.storage.local.remove("taskboardReviewUrl");
-    await api.storage.session.set({ copilotReviewTransfers: {} });
+    await api.storage.session.set({ copilotReviewTransfers: {}, copilotDiscussion: null });
     await unregister();
   }
   return {

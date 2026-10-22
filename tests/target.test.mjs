@@ -22,7 +22,7 @@ function fixture() {
   return { local, session, grants, scripts, api, targets: createTargetController(api) };
 }
 test("instance address is explicit, HTTPS-only and contains no credentials or payload", () => {
-  assert.deepEqual(reviewTarget("https://board.example/"), { url: "https://board.example/copilot-review", origin: "https://board.example/*", match: "https://board.example/copilot-review*" });
+  assert.deepEqual(reviewTarget("https://board.example/"), { url: "https://board.example/copilot-review", origin: "https://board.example/*", match: "https://board.example/*" });
   assert.equal(reviewTarget("https://board.example/copilot-review").url, "https://board.example/copilot-review");
   for (const value of ["", "http://board.example", "javascript:alert(1)", "https://*.example", "https://fixture@board.example", "https://board.example/?secret=1", "https://board.example/#token", "https://board.example/unrelated", "https://m365.cloud.microsoft/"]) assert.throws(() => reviewTarget(value));
 });
@@ -43,7 +43,7 @@ test("registration is narrow, persists, and retargeting invalidates old transfer
   assert.deepEqual(await f.targets.status(), { connected: true, state: "connected", label: "Taskboard connected", site: "board.example", reviewUrl: "https://board.example/copilot-review", detail: "Review bridge ready. Sign in on Taskboard when requested." });
   assert.equal(await f.targets.getReviewUrl(), "https://board.example/copilot-review");
   const script = f.scripts.get("taskboard-review");
-  assert.deepEqual(script.matches, ["https://board.example/copilot-review*"]);
+  assert.deepEqual(script.matches, ["https://board.example/*"]);
   assert.deepEqual(script.js, ["taskboard-review.js"]);
   assert.equal(script.persistAcrossSessions, true);
   f.scripts.clear();

@@ -144,8 +144,8 @@ test("all five shortcuts ground in the named snapshot and preserve manual review
     assert.match(text, /cannot retrieve the file/);
     assert.match(text, /more than a day old/);
     assert.match(text, /same issue and compatible dates/);
-    assert.match(text, /review and approve them in Taskboard/);
-    assert.match(text, /before approval/);
+    assert.match(text, /review them in plain language and click Apply/);
+    assert.match(text, /before Taskboard confirms/);
     assert.match(text, /1–20 concrete changes/);
     assert.match(text, /Never return an empty changes array/);
   }
@@ -161,7 +161,7 @@ test("recommendation review and preparation request proposals while preserving u
     assert.match(text, /missing decisions/);
     assert.match(text, /do not invent|rather than inventing/i);
     assert.match(text, /If no concrete change is ready|If nothing concrete is ready/);
-    assert.match(text, /button in Copilot/);
+    assert.match(text, /Apply as my single approval/);
     assert.match(text, /citations and explanatory prose outside the JSON/);
   }
   assert.match(prompts.buildPrompt("prepare"), /in this conversation/);

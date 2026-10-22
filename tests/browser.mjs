@@ -57,7 +57,7 @@ try {
   await options.reload();
   await options.locator("#connection[data-state=connected]").waitFor();
   const scripts = await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts());
-  assert.deepEqual(scripts[0].matches, ["https://board.example/copilot-review*"]);
+  assert.deepEqual(scripts[0].matches, ["https://board.example/*"]);
   const proposal = { type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "public-fixture-1", changes: [{ op: "note", task: "abc12345", text: "Fixture note", reason: "Fixture only" }] };
   const editorMode = process.env.COPILOT_TEST_CODE_EDITOR === "1";
   const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -69,7 +69,7 @@ try {
   // Match the observed tenant markup without retaining any account content.
   const negatives = editorMode ? `<section id="negative-candidates">${editor(proposal, 'aria-readonly="false" contenteditable="true"')}${editor(proposal, 'aria-readonly="true"', 2)}${editor({ ...proposal, type: "unrelated" })}${editor({ ...proposal, changes: [{ text: "界".repeat(12000) }] })}<pre contenteditable="true">${JSON.stringify(proposal)}</pre><pre>{"type":"taskboard-proposal"</pre></section>` : "";
   await context.route("https://m365.cloud.microsoft/**", route => route.fulfill({ contentType: "text/html", body: `<h1>Copilot fixture</h1><section id="chosen-proposal">${code}</section>${negatives}<textarea aria-label="Message Copilot">Unsent draft</textarea>` }));
-  await context.route("https://board.example/**", route => route.fulfill({ contentType: "text/html", body: '<h1>Review fixture</h1><div id="copilot-review-root"></div><p id="result">Waiting</p><pre id="received"></pre><script>window.addEventListener("message",e=>{if(e.source===window&&e.origin===location.origin&&e.data?.channel==="taskboard-copilot"&&e.data.type==="proposal"){document.getElementById("received").textContent=e.data.proposal;document.getElementById("result").textContent="Received selected proposal";window.postMessage({channel:"taskboard-copilot",type:"received",transferId:e.data.transferId},location.origin)}});setInterval(()=>window.postMessage({channel:"taskboard-copilot",type:"ready"},location.origin),100)</script>' }));
+  await context.route("https://board.example/**", route => route.fulfill({ contentType: "text/html", body: '<h1>Review fixture</h1><div id="copilot-review-root" data-copilot-protocol="2"></div><p id="result">Waiting</p><pre id="received"></pre><script>window.addEventListener("message",e=>{if(e.source===window&&e.origin===location.origin&&e.data?.channel==="taskboard-copilot"&&e.data.type==="proposal"){document.getElementById("received").textContent=e.data.proposal;document.getElementById("result").textContent="Received selected proposal";window.fixtureTransfer=e.data}});setInterval(()=>window.postMessage({channel:"taskboard-copilot",type:"ready"},location.origin),100)</script>' }));
   const copilot = await context.newPage();
   copilot.on("pageerror", error => errors.push(error.message));
   await copilot.goto("https://m365.cloud.microsoft/chat");
@@ -140,12 +140,12 @@ try {
   await connection.click();
   await dock.locator(".panel").waitFor({ state: "hidden" });
   await copilot.bringToFront();
-  await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
-  assert.equal(await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).count(), 1);
+  await copilot.getByRole("button", { name: "Review details", exact: true }).waitFor();
+  assert.equal(await copilot.getByRole("button", { name: "Review details", exact: true }).count(), 1);
   assert.equal(await copilot.locator("#negative-candidates .taskboard-copilot-proposal-review").count(), 0);
   assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers || {}), {});
-  await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).evaluate(button => button.click());
-  await copilot.getByText("Click this button yourself to transfer the proposal.", { exact: true }).waitFor();
+  await copilot.getByRole("button", { name: "Review details", exact: true }).evaluate(button => button.click());
+  await copilot.getByText("Click this button yourself to authorize the selected action.", { exact: true }).waitFor();
   assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers || {}), {});
   // Exercise streaming edits in place: invalid proposals explain recovery in
   // Copilot, never transfer, and become reviewable once corrected.
@@ -162,34 +162,40 @@ try {
   ]) {
     await updateBlock(value);
     await copilot.getByText(message, { exact: false }).waitFor();
-    assert.equal(await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).count(), 0);
+    assert.equal(await copilot.getByRole("button", { name: "Review details", exact: true }).count(), 0);
     assert.deepEqual(await worker.evaluate(async () => (await chrome.storage.session.get("copilotReviewTransfers")).copilotReviewTransfers || {}), {});
   }
   await copilot.setViewportSize({ width: 390, height: 568 });
   await copilot.emulateMedia({ colorScheme: "dark" });
   await copilot.screenshot({ path: path.join(root, "invalid-proposal-mobile-dark.png"), fullPage: true });
   await updateBlock(proposal);
-  await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
+  await copilot.getByRole("button", { name: "Review details", exact: true }).waitFor();
   await copilot.setViewportSize({ width: 1280, height: 780 });
   await copilot.emulateMedia({ colorScheme: "light" });
   const proposalShot = path.join(root, `proposal-${editorMode ? "editor" : "legacy"}.png`);
   await copilot.screenshot({ path: proposalShot, fullPage: true });
   const created = context.waitForEvent("page");
-  await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).click();
+  const applyMode = process.env.COPILOT_TEST_INTENT === "apply";
+  await copilot.getByRole("button", { name: applyMode ? "Apply 1 change" : "Review details", exact: true }).click();
   const review = await created;
   await review.getByText("Received selected proposal", { exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await review.locator("#received").textContent()), proposal);
+  assert.equal(await review.evaluate(() => window.fixtureTransfer.intent || "review"), applyMode ? "apply" : "review");
+  if (applyMode) await copilot.getByText("Taskboard is checking and applying your changes…", { exact: true }).waitFor();
+  await review.evaluate(() => window.postMessage({ channel: "taskboard-copilot", type: "completed", transferId: window.fixtureTransfer.transferId, result: { ok: true, message: "Fixture confirmed the selected action." } }, location.origin));
+  await copilot.getByText("Fixture confirmed the selected action.", { exact: true }).waitFor();
+  assert.equal(await copilot.getByRole("button", { name: "Apply 1 change", exact: true }).isDisabled(), applyMode);
   assert.equal(new URL(review.url()).origin, "https://board.example");
   assert.equal(new URL(review.url()).searchParams.get("proposal"), null);
   assert.equal(await copilot.getByLabel("Message Copilot").inputValue(), "Unsent draft");
   if (editorMode) {
     const source = copilot.locator('#chosen-proposal [role="textbox"]');
     await source.evaluate(el => el.setAttribute("aria-readonly", "false"));
-    await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor({ state: "detached" });
+    await copilot.getByRole("button", { name: "Review details", exact: true }).waitFor({ state: "detached" });
     await source.evaluate(el => el.setAttribute("aria-readonly", "true"));
-    await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor();
+    await copilot.getByRole("button", { name: "Review details", exact: true }).waitFor();
     await source.locator('[data-line-index="2"]').evaluate(el => el.remove());
-    await copilot.getByRole("button", { name: "Review changes in Taskboard", exact: true }).waitFor({ state: "detached" });
+    await copilot.getByRole("button", { name: "Review details", exact: true }).waitFor({ state: "detached" });
   }
   await dock.getByRole("button", { name: "Taskboard prompts", exact: true }).click();
   await dock.getByRole("button", { name: "Read snapshot", exact: false }).click();

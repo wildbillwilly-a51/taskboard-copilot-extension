@@ -1,21 +1,22 @@
 # Handoff
 
 ## Objective
-Deliver version 1.5.7 with proposal validation before review transfer.
+Prepare version 1.6.0 for a coordinated Taskboard conversational rollout.
 
 ## Current State
-The extension validates the complete bounded proposal contract before showing a
-review action and again before storing/transferring it. Empty and over-limit
-proposals explain recovery in Copilot without opening a failing review tab.
-Corrected blocks become reviewable in place. Prompts require 1-20 concrete
-changes and retain missing choices as questions. No invented placeholder edits,
-conversation scanning, automatic sending or permission/server changes.
+Readable cards come from validated JSON. Apply is the single approval and
+Review details queues changes without applying them. Raw JSON is expandable.
+The bridge reuses compatible board tabs without navigation, preserves drafts,
+returns confirmed results and refuses Apply on older servers. Task context and
+confirmed-result prompts use guarded draft insertion with manual sending.
+Board/activity route activation stays limited to the configured site's origin.
+This repository contains only the extension; matching Taskboard support is
+required. A staged package does not establish a deployed server or public release.
 
 ## Validation Completed
-20 public units and Chromium/Brave editor/legacy browser flows cover invalid
-counts, malformed operations, in-place correction, trusted exact transfer,
-acknowledgement, preserved drafts, settings and popup lifecycle. Private release
-validation checks the generated validator against the authoritative server
-parser. Composer/native-toolbar behavior is unchanged from the earlier release.
-Fresh-profile fixtures do not certify actual Copilot output compliance.
+23 public units; Chromium/Brave legacy/editor Apply and Review-details fixtures;
+20 composer results per engine. Private app/DB checks cover exact single-click
+application, optional editing, conflicts, replay, dropped-response reconciliation,
+context drafts, same-tab selection, responsive activity and copy recovery.
+Fixtures do not certify actual Copilot output or OneDrive indexing.
 Never publish profiles, personalized settings or private source history.
