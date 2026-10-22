@@ -8,7 +8,7 @@ edit a proposal first. Your server checks permissions and conflicts.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.6.0.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.6.1.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
@@ -69,9 +69,11 @@ optional inspection/editing and leaves the board unchanged. **Technical details*
 expands the original JSON. Invalid or incomplete blocks cannot be applied.
 
 A cooperating Taskboard tab is reused without navigation or losing its selected
-task. Apply keeps focus in Copilot; Review details opens Taskboard's activity
-panel. If no compatible tab is open, a separate Taskboard page handles the
-transfer and normal sign-in. Older servers reject single-click Apply explicitly;
+task. Apply keeps focus and its result in Copilot, with no second Taskboard
+notice or automatic activity dialog. Review details opens Taskboard's activity
+panel. If no compatible tab is open, Apply uses an inactive temporary receiver
+and closes it after success; a tab you activate or navigate is kept. Sign in to
+Taskboard normally before applying. Older servers reject single-click Apply explicitly;
 Review details remains compatible with the existing manual approval flow.
 
 Taskboard's **Discuss this task in Copilot** prepares the selected task's context

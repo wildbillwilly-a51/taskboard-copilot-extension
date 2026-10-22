@@ -75,7 +75,8 @@ export function createReviewController(api, { getReviewUrl = async () => TASKBOA
             } catch { tab = null; }
           }
         }
-        tab = await api.tabs.create({ windowId: sender.tab.windowId, url: `${reviewUrl}?transfer=${id}`, active: true });
+        tab = await api.tabs.create({ windowId: sender.tab.windowId, url: `${reviewUrl}?transfer=${id}`, active: intent === "review" });
+        transfer.backgroundApplyTab = intent === "apply";
       }
       catch (error) { delete pending[id]; await save(pending); throw error; }
       transfer.tabId = tab.id;
@@ -100,6 +101,19 @@ export function createReviewController(api, { getReviewUrl = async () => TASKBOA
       if (!transfer || transfer.tabId !== sender.tab.id || transfer.reviewUrl !== reviewUrl) return;
       try { await api.tabs.sendMessage(transfer.sourceTabId, { type: "proposal-result", transferId: id, requestId: JSON.parse(transfer.proposal).requestId, clientToken: transfer.clientToken, ok: result.ok, message: result.message }); } catch { /* Copilot may have closed. Activity remains on Taskboard. */ }
       delete pending[id]; await save(pending);
+      // Only the temporary background Apply tab belongs to this transfer. Never
+      // close a reused board, a tab the user activated, or one navigated elsewhere.
+      if (result.ok && transfer.backgroundApplyTab) {
+        try {
+          const tab = await api.tabs.get(transfer.tabId);
+          if (!tab.active) {
+            // Chrome may redact Tab.url without tabs permission. The same
+            // cooperating bridge used for reuse proves the receiver's identity.
+            const receiver = await api.tabs.sendMessage(tab.id, { type: "review-ping" });
+            if (receiver?.transferId === id && isTaskboardReviewPage(receiver.url, reviewUrl)) await api.tabs.remove(tab.id);
+          }
+        } catch { /* The user may already have closed the temporary tab. */ }
+      }
     }); },
     received(sender, id) { return serialized(async () => {
       const reviewUrl = await getReviewUrl();

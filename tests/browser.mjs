@@ -176,14 +176,31 @@ try {
   await copilot.screenshot({ path: proposalShot, fullPage: true });
   const created = context.waitForEvent("page");
   const applyMode = process.env.COPILOT_TEST_INTENT === "apply";
+  // Hold Chrome-created initial navigation until Playwright owns its fixture
+  // route; inactive tabs otherwise expose a race with the HTTPS test origin.
+  await worker.evaluate(() => {
+    const create = chrome.tabs.create.bind(chrome.tabs);
+    chrome.tabs.create = options => {
+      if (!options.url?.startsWith("https://board.example/")) return create(options);
+      globalThis.fixtureReviewUrl = options.url;
+      return create({ ...options, url: "about:blank" });
+    };
+  });
   await copilot.getByRole("button", { name: applyMode ? "Apply 1 change" : "Review details", exact: true }).click();
   const review = await created;
+  await review.goto(await worker.evaluate(() => globalThis.fixtureReviewUrl));
   await review.getByText("Received selected proposal", { exact: true }).waitFor();
   assert.deepEqual(JSON.parse(await review.locator("#received").textContent()), proposal);
   assert.equal(await review.evaluate(() => window.fixtureTransfer.intent || "review"), applyMode ? "apply" : "review");
+  const receiverTab = await worker.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url), review.url());
+  assert.equal(receiverTab.active, !applyMode, "Only an explicit Review details opens a foreground receiver");
   if (applyMode) await copilot.getByText("Taskboard is checking and applying your changes…", { exact: true }).waitFor();
   await review.evaluate(() => window.postMessage({ channel: "taskboard-copilot", type: "completed", transferId: window.fixtureTransfer.transferId, result: { ok: true, message: "Fixture confirmed the selected action." } }, location.origin));
   await copilot.getByText("Fixture confirmed the selected action.", { exact: true }).waitFor();
+  if (applyMode) {
+    for (let attempts = 0; attempts < 50 && !review.isClosed(); attempts++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(review.isClosed(), true, "Successful background Apply must not leave a confirmation tab");
+  } else assert.equal(review.isClosed(), false);
   assert.equal(await copilot.getByRole("button", { name: "Apply 1 change", exact: true }).isDisabled(), applyMode);
   assert.equal(new URL(review.url()).origin, "https://board.example");
   assert.equal(new URL(review.url()).searchParams.get("proposal"), null);

@@ -5,7 +5,7 @@ import { createReviewController, isCopilotPage, isTaskboardReviewPage } from "..
 const TASKBOARD_REVIEW_URL = "https://board.example/copilot-review";
 const body = JSON.stringify({ type: "taskboard-proposal", version: 1, snapshotId: "abcdef123456", requestId: "test-request-1", changes: [{ op: "update", task: "12345678", set: { title: "Updated title" }, reason: "Requested rename" }] });
 function fixture() {
-  const data = {}, tabs = new Map(), calls = [];
+  const data = {}, tabs = new Map(), calls = [], removed = [];
   const api = {
     storage: { session: { async get(key) { return { [key]: data[key] }; }, async set(value) { Object.assign(data, value); } } },
     windows: { async get(id) { return { id, type: "normal" }; }, async update() {} },
@@ -13,11 +13,12 @@ function fixture() {
       async create(value) { const tab = { ...value, id: tabs.size + 10 }; tabs.set(tab.id, tab); calls.push(tab); return tab; },
       async get(id) { if (!tabs.has(id)) throw Error("Closed"); return tabs.get(id); },
       async update() {},
+      async remove(id) { removed.push(id); tabs.delete(id); },
       async sendMessage(id) { const tab = tabs.get(id); return { transferId: new URL(tab.url).searchParams.get("transfer"), url: tab.url }; },
     },
   };
   const sender = { url: "https://m365.cloud.microsoft/chat", tab: { id: 1, windowId: 5 } };
-  return { api, data, tabs, calls, sender, controller: createReviewController(api, { getReviewUrl: async () => TASKBOARD_REVIEW_URL }) };
+  return { api, data, tabs, calls, removed, sender, controller: createReviewController(api, { getReviewUrl: async () => TASKBOARD_REVIEW_URL }) };
 }
 test("proposal transport is explicit, tab-bound, session-only and cleared on acknowledgement", async () => {
   const f = fixture();
@@ -108,6 +109,7 @@ test("Apply reuses a capable board tab without navigating, closing or focusing i
   await f.controller.complete(receiver, transferId, { ok: true, message: "Applied", type: "injected-type", prompt: "must not forward" });
   assert.deepEqual(messages.at(-1), { id: f.sender.tab.id, message: { type: "proposal-result", transferId, requestId: "test-request-1", clientToken: token, ok: true, message: "Applied" } });
   assert.equal(await f.controller.pending(receiver, transferId), null);
+  assert.deepEqual(f.removed, [], "Reused board tabs must never close after Apply");
 });
 test("older or busy board tabs fall back to an isolated review tab", async () => {
   const f = fixture();
@@ -116,6 +118,34 @@ test("older or busy board tabs fall back to an isolated review tab", async () =>
   await f.controller.begin(f.sender, body, "apply");
   assert.equal(f.calls.length, 1);
   assert.match(f.calls[0].url, /copilot-review\?transfer=/);
+  assert.equal(f.calls[0].active, false, "Apply must not foreground another confirmation");
+});
+
+test("successful fallback Apply closes only its own inactive receiver after reporting to Copilot", async () => {
+  for (const scenario of ["success", "redacted", "failure", "activated", "navigated"]) {
+    const f = fixture();
+    const { transferId } = await f.controller.begin(f.sender, body, "apply");
+    const tab = f.calls[0];
+    const receiver = { url: tab.url, tab: { id: tab.id } };
+    const messages = [];
+    f.api.tabs.sendMessage = async (id, message) => { messages.push({ id, message }); if (message.type === "review-ping") return { transferId, url: tab.url }; };
+    if (scenario === "activated") tab.active = true;
+    if (scenario === "navigated") tab.url = "https://other.example/";
+    if (scenario === "redacted") f.api.tabs.get = async id => ({ ...f.tabs.get(id), url: undefined });
+    await f.controller.complete(receiver, transferId, { ok: scenario !== "failure", message: "Confirmed result" });
+    assert.equal(messages[0].id, f.sender.tab.id);
+    assert.equal(messages[0].message.type, "proposal-result");
+    assert.deepEqual(f.removed, ["success", "redacted"].includes(scenario) ? [tab.id] : []);
+  }
+});
+
+test("explicit Review details opens and retains its foreground review tab", async () => {
+  const f = fixture();
+  const { transferId } = await f.controller.begin(f.sender, body, "review");
+  const tab = f.calls[0];
+  assert.equal(tab.active, true);
+  await f.controller.complete({ url: tab.url, tab: { id: tab.id } }, transferId, { ok: true, message: "Ready for review" });
+  assert.deepEqual(f.removed, []);
 });
 test("approval tokens and task-discussion senders are bounded to the configured site", async () => {
   const f = fixture();
