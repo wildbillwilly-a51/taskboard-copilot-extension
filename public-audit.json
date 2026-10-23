@@ -30,7 +30,7 @@
     "extension/target.mjs": "3eef80163406d36b230834434f9a852fd2533adf7009484c48a63244deda52aa",
     "extension/taskboard-review.js": "fd87a84f89183c189b107e7cf7608294bc2118fc64a50695126357ef23693c08",
     "package.json": "187a7d00c2ee64d831d940f932c1b39c9995f3e3d023b62d6962ee30161039ea",
-    "tests/auto-context.browser.mjs": "c9aeff9c03eae260c0cbb31c2429a4d5a8f69d371448a5a033c210abd5da21e6",
+    "tests/auto-context.browser.mjs": "bd74ff4270b39cd82efe0165978bcd90192ec8eddfdf4348bec88ffd769364ad",
     "tests/browser.mjs": "f5cdfd0e0d06af8200dbc67164bed829839757545203dfedb8d651d98e1c4fd7",
     "tests/composer.browser.mjs": "3d7273a3c595e7142de380d25ac72dc5fdbfe95f47075c14a587b3f5145de0d7",
     "tests/hosts.test.mjs": "7e7aabf93363dafa69e57c6be1f8e081f704cc4ce16ca7175829bbfe4126ae58",
