@@ -168,6 +168,17 @@ test("recommendation review and preparation request proposals while preserving u
   assert.match(prompts.buildPrompt("prepare"), /general acknowledgement/);
 });
 
+test("automatic instructions distinguish Taskboard from native Microsoft tasks", () => {
+  const context = prompts.buildContext(new Date(2026, 9, 23, 12));
+  assert.match(context, /not Microsoft To Do, Planner, or a private Microsoft task/);
+  assert.match(context, /subtask creation is unsupported/);
+  assert.match(context, /actual Snapshot ID|Snapshot ID/);
+  for (const text of ["Create a Taskboard task from these emails", "Update my task board", "What's due in TASKBOARD?"]) assert.equal(prompts.needsContext(text), true);
+  assert.equal(prompts.needsContext("Summarize my emails"), false);
+  assert.equal(prompts.needsContext("Use Microsoft To Do, not Taskboard"), false);
+  assert.equal(prompts.needsContext(prompts.buildPrompt("prepare")), false);
+});
+
 test("manifest has only scoped content scripts and local runtime resources", () => {
   const base = new URL("../extension/", import.meta.url);
   const manifest = JSON.parse(readFileSync(new URL("manifest.json", base), "utf8"));

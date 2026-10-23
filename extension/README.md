@@ -24,6 +24,21 @@ server. Workplace browser policies may restrict unpacked extensions.
 
 ## Use
 
+Write a normal request that names **Taskboard**, then use Copilot's **Send**
+button or keyboard Send shortcut. The extension adds the Taskboard rules to that
+same request and continues your Send once. No Read snapshot or Prepare changes
+startup step is needed. The rules distinguish Taskboard from Microsoft's native
+task tools, require proposal JSON, check for duplicates and explain unsupported
+subtasks. Ordinary Copilot requests and explicit Microsoft-task requests stay
+unchanged. Prepared shortcuts are not wrapped twice.
+
+This step reads only the current draft at your Send action. It preserves rich
+references and attachments. If insertion is uncertain or the draft/chat changes,
+it cancels the send and keeps your draft. A disconnected Taskboard gives connection
+guidance before an unprimed Taskboard message can use native task routing. It
+never sends an independent setup message. Copilot still has to retrieve the
+snapshot and return valid JSON before Apply appears; prose never becomes changes.
+
 The toolbar and Settings page show your connection status and configured site.
 In Copilot, connection status and Split View guidance appear only inside the
 open **Taskboard prompts** panel. Closing it also hides those cards; background
@@ -48,7 +63,8 @@ In Copilot, open **Taskboard prompts**. Shortcuts assume a work OneDrive file
 named `Taskboard snapshot.md` in `Documents/Taskboard`. Ask Copilot to confirm
 the snapshot ID and generated time it read. Your server/connector must provide
 that file; neither is included in this extension. Existing drafts are preserved
-unless you choose to replace them. Prompts are never sent automatically.
+unless you choose to replace them. Shortcuts never send; automatic instructions
+continue only the Send action you explicitly trigger.
 The prompt panel closes when insertion starts or copying succeeds. Draft-replacement
 confirmation stays open until you decide or dismiss the panel. Insertion feedback
 appears briefly beside the collapsed prompt button.
@@ -78,7 +94,7 @@ Review details remains compatible with the existing manual approval flow.
 
 Taskboard's **Discuss this task in Copilot** prepares the selected task's context
 in a paired Copilot tab. Existing drafts still require your replacement choice.
-Nothing sends automatically. **Copilot activity** retains received proposals and
+These buttons prepare drafts for manual Send. **Copilot activity** retains received proposals and
 applied changes; conflicts stay pending for attention. **Continue in Copilot**
 prepares a confirmed-result message for you to send. The snapshot must refresh
 before another change to the same fields. These controls require the matching
@@ -115,7 +131,9 @@ code loading, mailbox scanning or Microsoft API integration in the extension.
 The extension scans bounded `pre`/`code` elements and contiguous rendered lines
 in read-only code editors for proposal markers. Editable drafts, incomplete
 blocks and oversized proposals are ignored. It does not collect conversation
-history. Only the selected proposal transfers after a real user click. A separate real
+history. At your Send action it reads the current composer to add Taskboard rules;
+that draft is not stored or sent to a separate service. Only the selected proposal
+transfers after a real user click. A separate real
 Taskboard context-button click prepares just its bounded prompt in Copilot. Its body stays in extension session storage for at most
 15 minutes (expired records are discarded on the next access), is bound to one
 review tab and the configured origin, and is cleared after completion/acknowledgement. A pending task-context prompt is

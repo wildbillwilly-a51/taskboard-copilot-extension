@@ -55,7 +55,7 @@
       <header><h2 id="dock-title">Taskboard prompts</h2><button class="close" aria-label="Collapse Taskboard prompts">×</button></header>
       <div class="body">
       <p class="split-guide" hidden></p>
-      <p>Choose a shortcut to fill Copilot’s message box. Review the prompt there, then send it yourself.</p>
+      <p>Write Taskboard requests normally. When you press Send, the extension automatically includes the Taskboard instructions. Shortcuts below fill a draft for you to review.</p>
       <p>Ask Copilot for task changes, then click <strong>Apply</strong> on its readable change card. That click is your approval. <strong>Review details</strong> is optional.</p>
       <div class="shortcuts"></div>
       <label for="prompt">Prompt preview · optional edits</label>
@@ -104,6 +104,7 @@
       if (revision === feedbackRevision) clearNotice();
     }, warning ? 10000 : 5000);
   }
+  globalThis.TaskboardCopilotFeedback = message => { status.textContent = message; showNotice(message, true); };
   root.querySelector(".notice-dismiss").addEventListener("click", () => {
     clearNotice();
     toggle.focus();

@@ -43,7 +43,7 @@
   const canonical = (value) => value.replace(/[\s\u200b]+/g, " ").trim();
   const pause = () => new Promise((resolve) => setTimeout(resolve, 60));
 
-  async function insertPrompt(element, text, expectedSnapshot, canFocus = () => true) {
+  async function insertPrompt(element, text, expectedSnapshot, canFocus = () => true, appendText = "") {
     if (!ready(element)) return { state: "unavailable" };
     if (snapshot(element) !== expectedSnapshot) return { state: "changed" };
     const doc = element.ownerDocument;
@@ -52,6 +52,7 @@
       target.focus();
       const range = doc.createRange();
       range.selectNodeContents(target);
+      if (appendText) range.collapse(false);
       const selection = win.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
@@ -74,7 +75,7 @@
         if (!ready(element)) return { state: "unavailable" };
         if (snapshot(element) !== expectedSnapshot) return { state: "changed" };
         const transfer = new win.DataTransfer();
-        transfer.setData("text/plain", text);
+        transfer.setData("text/plain", appendText || text);
         const paste = new win.ClipboardEvent("paste", { bubbles: true, cancelable: true, composed: true, clipboardData: transfer });
         element.dispatchEvent(paste);
         await pause();
@@ -82,7 +83,7 @@
           // Plain contenteditables have no paste handler for synthetic events.
           // Chromium's editing command preserves native input/undo behavior.
           selectContents();
-          doc.execCommand("insertText", false, text);
+          doc.execCommand("insertText", false, appendText || text);
         }
       }
       // Copilot can replace the editor after handling paste/input. Reacquire
@@ -110,5 +111,9 @@
       return { state: "unconfirmed" };
     }
   }
-  globalThis.TaskboardCopilotComposer = { findComposer, snapshot, hasDraft, insertPrompt };
+  function appendContext(element, context, expectedSnapshot) {
+    const suffix = `\n\n${context}`;
+    return insertPrompt(element, draftText(element) + suffix, expectedSnapshot, () => false, suffix);
+  }
+  globalThis.TaskboardCopilotComposer = { findComposer, snapshot, hasDraft, insertPrompt, draftText, appendContext };
 })();

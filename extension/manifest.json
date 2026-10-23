@@ -36,6 +36,7 @@
         "prompts.js",
         "composer.js",
         "dock.js",
+        "auto-context.js",
         "proposal-contract.js",
         "proposals.js",
         "connection-dock.js"
