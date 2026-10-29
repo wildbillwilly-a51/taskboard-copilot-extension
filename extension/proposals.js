@@ -28,7 +28,7 @@
     try { TaskboardCopilotProposal.parse(text); return ""; }
     catch (error) {
       const value = JSON.parse(text);
-      if (Array.isArray(value.changes) && value.changes.length === 0) return "No task changes were included. Ask Copilot to prepare 1â€“20 concrete changes from your request, or explain which decision is still needed. An empty proposal cannot be reviewed.";
+      if (Array.isArray(value.changes) && value.changes.length === 0) return "No task changes were included. Ask Copilot to prepare 1–20 concrete changes from your request, or explain which decision is still needed. An empty proposal cannot be reviewed.";
       if (Array.isArray(value.changes) && value.changes.length > 20) return `This proposal has ${value.changes.length} changes. Ask Copilot for at most 20 changes, then refresh the snapshot after approval before preparing the next batch. Nothing has been transferred.`;
       return `${error.message} Ask Copilot to correct this proposal using the snapshot instructions. Nothing has been transferred.`;
     }
@@ -62,7 +62,7 @@
       const host = document.createElement("div");
       host.className = "taskboard-copilot-proposal-review";
       const root = host.attachShadow({ mode: "open" });
-      root.innerHTML = `<style>:host{all:initial;display:block;margin:12px 0;max-width:640px;font:13px/1.5 system-ui;color-scheme:light dark;color:light-dark(#182233,#ecf0f8)}*{box-sizing:border-box}.card{padding:16px;border:1px solid light-dark(#c7d0df,#526078);border-radius:12px;background:light-dark(#f8faff,#1d2533)}h3{font-size:15px;margin:0 0 10px}ol{margin:0 0 12px;padding-left:22px;max-height:360px;overflow:auto}li{margin:0 0 12px;overflow-wrap:anywhere;white-space:pre-wrap}.target{font-size:11px;opacity:.75}button{font:inherit;min-height:44px;padding:10px 12px;border:1px solid #5a73ba;border-radius:8px;background:#354fb5;color:#fff;cursor:pointer}button.secondary{background:transparent;color:inherit}button:focus-visible{outline:3px solid #92abff;outline-offset:3px}button:disabled{opacity:.6;cursor:default}.actions{display:flex;flex-wrap:wrap;gap:8px}p{font:12px/1.5 system-ui;margin:10px 0 0;overflow-wrap:anywhere}</style><section class="card" aria-label="Proposed Taskboard changes"><h3>Proposed task changes</h3><ol></ol><div class="actions"><button class="apply" type="button"></button><button class="review secondary" type="button">Review details</button><button class="technical secondary" type="button" aria-expanded="false">Technical details</button></div><p role="status">Apply is your approval. Taskboard checks for conflicts before changing anything.</p></section>`;
+       root.innerHTML = `<style>:host{all:initial;display:block;margin:12px 0;max-width:640px;font:13px/1.5 system-ui;color-scheme:light dark;color:light-dark(#182233,#ecf0f8)}*{box-sizing:border-box}.card{padding:16px;border:1px solid light-dark(#c7d0df,#526078);border-radius:12px;background:light-dark(#f8faff,#1d2533)}h3{font-size:15px;margin:0 0 10px}ol{margin:0 0 12px;padding-left:22px;max-height:360px;overflow:auto}li{margin:0 0 12px;overflow-wrap:anywhere;white-space:pre-wrap}.target,.reason{font-size:11px;opacity:.75;margin-top:3px}button{font:inherit;min-height:44px;padding:10px 12px;border:1px solid #5a73ba;border-radius:8px;background:#354fb5;color:#fff;cursor:pointer}button.secondary{background:transparent;color:inherit}button:focus-visible{outline:3px solid #92abff;outline-offset:3px}button:disabled{opacity:.6;cursor:default}.actions{display:flex;flex-wrap:wrap;gap:8px}p{font:12px/1.5 system-ui;margin:10px 0 0;overflow-wrap:anywhere}</style><section class="card" aria-label="Proposed Taskboard changes"><h3>Proposed task changes</h3><ol></ol><div class="actions"><button class="apply" type="button"></button><button class="review secondary" type="button">Review details</button><button class="technical secondary" type="button" aria-expanded="false">Technical details</button></div><p role="status">Titles below come from Copilot’s proposal. Apply is your approval; Taskboard verifies them against the snapshot before changing anything.</p></section>`;
       const anchor = element.matches(editorSelector) ? element.closest(".scriptor-component-code-block") || element : element;
       anchor.insertAdjacentElement("beforebegin", host);
       const widget = { host, root, anchor, originalStyle: Object.fromEntries(["width", "position", "visibility", "pointerEvents"].map(key => [key, anchor.style[key]])), text, collapsed: true, pending: false, intent: null, transferId: null, timeout: null };
@@ -80,23 +80,35 @@
       if (error) { apply.remove(); review.remove(); root.querySelector("ol").remove(); status.textContent = error; continue; }
       const parsed = TaskboardCopilotProposal.parse(text);
       widget.requestId = parsed.requestId;
+      status.textContent = parsed.changes.some(change => (change.op === "update" || change.task) && !change.target)
+        ? "Some existing-task titles or levels were not stated by Copilot. Apply will use Taskboard’s compatibility checks and may require a fresh proposal."
+        : "Titles below come from Copilot’s proposal. Apply is your approval; Taskboard verifies them against the snapshot before changing anything.";
       apply.textContent = `Apply ${parsed.changes.length} change${parsed.changes.length === 1 ? "" : "s"}`;
       for (const change of parsed.changes) {
         const item = document.createElement("li");
         const lines = [];
-        if (change.op === "note") lines.push(`Add working note: ${change.text}`);
+        const proposedTarget = change.taskRef ? parsed.changes.find(item => item.op === "create" && item.ref === change.taskRef)?.set.title : null;
+         if (change.op === "note") lines.push(`Add a working note to ${proposedTarget ? `new task “${proposedTarget}”` : change.target ? `“${change.target.title}”` : "an existing task"}: ${change.text}`);
+        else if (change.op === "checklist") lines.push(`Add ${change.done ? "a completed" : "a"} checklist item to ${proposedTarget ? `new task “${proposedTarget}”` : change.target ? `“${change.target.title}”` : "an existing task"}: ${change.label}`);
+        else if (change.op === "archive") lines.push(`Archive ${change.target ? `“${change.target.title}” and all of its subtasks` : "an existing task and all of its subtasks"}`);
+        else if (change.op === "restore") lines.push(`Restore ${change.target ? `“${change.target.title}” and all of its subtasks` : "an existing task and all of its subtasks"}`);
         else {
-          if (change.op === "create") lines.push("Create a task");
+           if (change.op === "create") lines.push(`${change.parent || change.parentRef ? "Create subtask" : "Create task"}: “${change.set.title}”`);
+           else lines.push(`Update ${change.target ? `“${change.target.title}”` : "an existing task"}`);
           for (const [field, value] of Object.entries(change.set)) {
-            if (field === "title") lines.push(`${change.op === "create" ? "Title" : "Rename to"}: ${value}`);
+             if (field === "title" && change.op !== "create") lines.push(`Rename to: ${value}`);
             if (field === "summary") lines.push(value ? `Description: ${value}` : "Clear the description");
             if (field === "bucket") lines.push(`${change.op === "create" ? "Bucket" : "Move to bucket"}: ${value}`);
             if (field === "status") lines.push(`Set status to ${{todo:"To do",active:"In progress",waiting:"Waiting",done:"Done"}[value]}`);
             if (field === "dueAt") lines.push(value ? `Set due date to ${new Date(value).toLocaleString()} (${Intl.DateTimeFormat().resolvedOptions().timeZone})` : "Clear the due date");
+            if (field === "labels") lines.push(value.length ? `Set labels to: ${value.join(", ")}` : "Clear all labels");
           }
         }
         item.textContent = lines.join("\n");
-        if (change.op !== "create") { const target = document.createElement("div"); target.className = "target"; target.textContent = `Task ${change.task}`; item.append(target); }
+         const proposedParent = change.op === "create" && change.parentRef ? parsed.changes.find(item => item.op === "create" && item.ref === change.parentRef)?.set.title : null;
+         const scope = change.op === "create" ? change.parent?.title ? `Under “${change.parent.title}”` : proposedParent ? `Under “${proposedParent}”` : "Top-level task" : proposedTarget ? `New task in this proposal: “${proposedTarget}”` : !change.target ? "Existing task (title and level not stated by Copilot)" : change.target.parentTitle ? `Subtask under “${change.target.parentTitle}”` : "Top-level task";
+         const target = document.createElement("div"); target.className = "target"; target.textContent = `${scope}${change.op === "create" || change.taskRef ? "" : ` · ID ${change.task}`}`; item.append(target);
+         const reason = document.createElement("div"); reason.className = "reason"; reason.textContent = `Why: ${change.reason}`; item.append(reason);
         root.querySelector("ol").append(item);
       }
       for (const [button, intent] of [[apply, "apply"], [review, "review"]]) button.addEventListener("click", async event => {

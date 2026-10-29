@@ -8,7 +8,7 @@ edit a proposal first. Your server checks permissions and conflicts.
 
 ## Install on another computer
 
-1. Download **taskboard-copilot-extension-1.6.1.zip** from this repository's Releases page.
+1. Download **taskboard-copilot-extension-1.7.1.zip** from this repository's Releases page.
 2. Extract the ZIP into a permanent folder on that computer. Keep the folder after installation.
 3. Open `brave://extensions` (or `chrome://extensions`) and enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.

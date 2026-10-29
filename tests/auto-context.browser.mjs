@@ -126,7 +126,7 @@ test('Taskboard context accompanies the original Send without a setup prompt', a
     await suite.test('prepared shortcuts are not wrapped again', async () => {
       const page = await create();
       await page.getByRole('button', { name: 'Taskboard prompts', exact: true }).click();
-      await page.locator('#taskboard-copilot-prompts [data-id="snapshot"]').click();
+      await page.locator('#taskboard-copilot-prompts [data-id="priorities"]').click();
       // Existing draft protection still asks before replacing this fixture draft.
       await page.getByRole('button', { name: 'Replace draft', exact: true }).click();
       await page.getByRole('status').filter({ hasText: 'Prompt added.' }).waitFor();
@@ -154,6 +154,22 @@ test('Taskboard context accompanies the original Send without a setup prompt', a
     await suite.test('a replacement editor retaining the complete request sends only once', async () => {
       const page = await create(true);
       await page.getByLabel('Message Copilot').evaluate(editor => editor.addEventListener('paste', () => setTimeout(() => editor.replaceWith(editor.cloneNode(true)), 30), { once: true }));
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await check(page, 'Create a Taskboard task from the server deployment emails.');
+      await page.close();
+    });
+    await suite.test('continuous editor and Send replacement still confirms and submits once', async () => {
+      const page = await create(true);
+      await page.getByLabel('Message Copilot').evaluate(editor => editor.addEventListener('paste', () => {
+        let replacements = 0;
+        const timer = setInterval(() => {
+          const current = document.getElementById('m365-chat-editor-target-element');
+          current.replaceWith(current.cloneNode(true));
+          const send = document.querySelector('button[aria-label="Send"]');
+          send.replaceWith(send.cloneNode(true));
+          if (++replacements >= 30) clearInterval(timer);
+        }, 20);
+      }, { once: true }));
       await page.getByRole('button', { name: 'Send', exact: true }).click();
       await check(page, 'Create a Taskboard task from the server deployment emails.');
       await page.close();

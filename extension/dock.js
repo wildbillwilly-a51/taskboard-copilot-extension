@@ -265,7 +265,7 @@
       status.textContent = "Clipboard unavailable. Press Ctrl+C (⌘C on Mac) to copy the selected prompt.";
     } finally { copy.disabled = false; }
   });
-  select("snapshot");
+  select("priorities");
   refreshGuide();
   void chrome.storage.local.get("dockOpen").then(({ dockOpen }) => {
     if (!interacted) setOpen(dockOpen === true);

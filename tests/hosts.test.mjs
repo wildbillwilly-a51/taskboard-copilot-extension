@@ -133,9 +133,8 @@ const context = vm.createContext({ Intl, Date });
 vm.runInContext(readFileSync(new URL("../extension/prompts.js", import.meta.url), "utf8"), context);
 const prompts = context.TaskboardCopilotPrompts;
 
-test("all five shortcuts ground in the named snapshot and preserve manual review", () => {
-  assert.equal(prompts.shortcuts.length, 5);
-  assert.equal(new Set(prompts.shortcuts.map((item) => item.id)).size, 5);
+test("the two Microsoft 365 shortcuts ground in the named snapshot and preserve manual review", () => {
+  assert.deepEqual(Array.from(prompts.shortcuts, (item) => item.id), ["priorities", "meeting"]);
   for (const shortcut of prompts.shortcuts) {
     const text = prompts.buildPrompt(shortcut.id, new Date(2026, 9, 20, 12));
     assert.match(text, /Today is 2026-10-20/);
@@ -148,35 +147,49 @@ test("all five shortcuts ground in the named snapshot and preserve manual review
     assert.match(text, /before Taskboard confirms/);
     assert.match(text, /1–20 concrete changes/);
     assert.match(text, /Never return an empty changes array/);
+    assert.match(text, /quoted title/);
+    assert.match(text, /top-level task or subtask/);
+    assert.match(text, /related item at another level does not satisfy the request/);
+    assert.match(text, /what Taskboard items will exist after Apply/);
+    assert.match(text, /one atomic change set/);
+    assert.match(text, /Never tell me to send another prompt/);
   }
   assert.throws(() => prompts.buildPrompt("bad"), /Unknown/);
 });
 
-test("recommendation review and preparation request proposals while preserving unresolved decisions", () => {
-  for (const id of ["review", "prepare"]) {
-    const text = prompts.buildPrompt(id);
-    assert.match(text, /ONE JSON code block/);
-    assert.match(text, /taskboard-proposal/);
-    assert.match(text, /conditional|Conditional/);
-    assert.match(text, /missing decisions/);
-    assert.match(text, /do not invent|rather than inventing/i);
-    assert.match(text, /If no concrete change is ready|If nothing concrete is ready/);
-    assert.match(text, /Apply as my single approval/);
-    assert.match(text, /citations and explanatory prose outside the JSON/);
-  }
-  assert.match(prompts.buildPrompt("prepare"), /in this conversation/);
-  assert.match(prompts.buildPrompt("prepare"), /general acknowledgement/);
+test("ordinary Taskboard requests require recognizable sources and explicit dates", () => {
+  const text = prompts.buildContext(new Date(2026, 9, 23, 12));
+  assert.match(text, /sender or organizer, subject or meeting title, and source date/);
+  assert.match(text, /source is missing or ambiguous/);
+  assert.match(text, /relative dates such as today, tomorrow, or Friday/);
+  assert.match(text, /absolute date/);
+  assert.match(text, /Apply as my single approval/);
+  assert.match(text, /citations and explanatory prose outside the JSON/);
 });
 
 test("automatic instructions distinguish Taskboard from native Microsoft tasks", () => {
   const context = prompts.buildContext(new Date(2026, 9, 23, 12));
   assert.match(context, /not Microsoft To Do, Planner, or a private Microsoft task/);
-  assert.match(context, /subtask creation is unsupported/);
+  assert.match(context, /what Taskboard items will exist after Apply/);
   assert.match(context, /actual Snapshot ID|Snapshot ID/);
+  assert.match(context, /never by a bare task ID/);
+  assert.match(context, /parent title when applicable/);
+  assert.match(context, /project, top-level task, work item, and subtask are different scopes/);
+  assert.match(context, /Do not repurpose, widen, narrow, promote, or reparent/);
+  assert.match(context, /clearly labeled partial proposal/);
+  assert.match(context, /never imply that it fulfills unsupported parts/);
+  assert.match(context, /subtasks, checklist items, and working notes in the same proposal/);
+  assert.match(context, /target same-proposal details with taskRef/);
   for (const text of ["Create a Taskboard task from these emails", "Update my task board", "What's due in TASKBOARD?"]) assert.equal(prompts.needsContext(text), true);
   assert.equal(prompts.needsContext("Summarize my emails"), false);
   assert.equal(prompts.needsContext("Use Microsoft To Do, not Taskboard"), false);
-  assert.equal(prompts.needsContext(prompts.buildPrompt("prepare")), false);
+  assert.equal(prompts.needsContext(prompts.buildPrompt("priorities")), false);
+});
+
+test("daily priorities request readable task references rather than ID-led output", () => {
+  const prompt = prompts.buildPrompt("priorities", new Date(2026, 9, 23, 12));
+  assert.match(prompt, /priorities with task titles/);
+  assert.doesNotMatch(prompt, /priorities with task IDs/);
 });
 
 test("manifest has only scoped content scripts and local runtime resources", () => {

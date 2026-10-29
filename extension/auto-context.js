@@ -21,6 +21,12 @@
     }
     return false;
   };
+  const liveSendButton = element => {
+    const candidates = Array.from(document.querySelectorAll('button'))
+      .map(button => sendButton(button))
+      .filter(button => button && ownsSend(element, button));
+    return candidates.length === 1 ? candidates[0] : null;
+  };
   async function guide(element, continueSend) {
     if (busy) return;
     busy = true; cancelled = false;
@@ -72,9 +78,10 @@
     const element = composer.findComposer();
     if (!button || !element || !ownsSend(element, button) || !busy && !TaskboardCopilotPrompts.needsContext(composer.draftText(element))) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    void guide(element, () => {
-      if (!button.isConnected || button.disabled || !button.getClientRects().length) throw Error('The Send control changed. Your prepared message is still in the draft.');
-      button.click();
+    void guide(element, current => {
+      const liveButton = liveSendButton(current);
+      if (!liveButton) throw Error('The Send control changed. Your prepared message is still in the draft.');
+      liveButton.click();
     });
   }, true);
 })();

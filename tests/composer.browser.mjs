@@ -62,7 +62,7 @@ test("composer insertion through the actual isolated extension content scripts",
           setTimeout(() => { editor.value = globalThis.model; }, 20);
         });
       });
-      for (const id of ["snapshot", "priorities", "meeting", "review", "prepare"]) {
+      for (const id of ["priorities", "meeting"]) {
         await choose(page, id);
         await inserted(page);
         assert.equal(await page.locator("#prompt-panel").isVisible(), false);
@@ -75,19 +75,19 @@ test("composer insertion through the actual isolated extension content scripts",
       }
       await page.close();
     });
-    await suite.test("Prepare changes is reachable in a narrow popup and requests a proposal without sending", async () => {
+    await suite.test("the focused shortcuts remain reachable in a narrow popup without sending", async () => {
       const page = await createPage(textarea);
       await page.setViewportSize({ width: 320, height: 568 });
       await page.emulateMedia({ colorScheme: "dark" });
-      const action = page.getByRole("button", { name: "Prepare changes Turn recommendations into a proposal", exact: true });
+      const action = page.getByRole("button", { name: "Daily priorities Plan around mail and meetings", exact: true });
       await action.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(evidence, "prepare-changes-320-dark.png") });
+      await page.screenshot({ path: path.join(evidence, "focused-shortcuts-320-dark.png") });
       await action.click();
       await inserted(page);
       const text = await page.getByLabel("Message Copilot").inputValue();
-      assert.match(text, /recommendations and my explicit change requests in this conversation/);
-      assert.match(text, /ONE JSON code block/);
-      assert.match(text, /missing decisions/);
+      assert.match(text, /up to five priorities/);
+      assert.match(text, /task titles/);
+      assert.match(text, /Apply as my single approval/);
       assert.equal(await page.locator("#prompt-panel").isVisible(), false);
       assert.equal(await page.evaluate(() => globalThis.sent), 0);
       await page.close();
@@ -124,7 +124,7 @@ test("composer insertion through the actual isolated extension content scripts",
     await suite.test("missing or ambiguous composers fail visibly without changing fields", async () => {
       for (const markup of ["", '<textarea aria-label="Message Copilot"></textarea><textarea aria-label="Message Copilot"></textarea>']) {
         const page = await createPage(markup);
-        await choose(page, "snapshot");
+        await choose(page, "priorities");
         await page.getByRole("status").filter({ hasText: "cannot be identified" }).waitFor();
         assert.deepEqual(await page.locator("form textarea").evaluateAll((elements) => elements.map((element) => element.value)), markup ? ["", ""] : []);
         assert.equal(await page.evaluate(() => globalThis.sent), 0);
@@ -133,7 +133,7 @@ test("composer insertion through the actual isolated extension content scripts",
     });
     await suite.test("hidden, read-only, disabled and search boxes are ignored", async () => {
       const page = await createPage('<textarea hidden aria-label="Message Copilot"></textarea><textarea readonly aria-label="Message Copilot"></textarea><textarea disabled aria-label="Message Copilot"></textarea><textarea aria-label="Search Copilot"></textarea>' + textarea);
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await inserted(page);
       const fields = await page.locator("form textarea").evaluateAll((elements) => elements.map((element) => element.value));
       assert.deepEqual(fields.slice(0, 4), ["", "", "", ""]);
@@ -163,7 +163,7 @@ test("composer insertion through the actual isolated extension content scripts",
     });
     await suite.test("plain contenteditable uses native editing without a synthetic paste handler", async () => {
       const page = await createPage(rich);
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await inserted(page);
       assert.match(await page.locator("#m365-chat-editor-target-element").innerText(), /Taskboard snapshot\.md/);
       assert.equal(await page.evaluate(() => globalThis.sent), 0);
@@ -184,7 +184,7 @@ test("composer insertion through the actual isolated extension content scripts",
           editor.textContent = globalThis.model;
         });
       });
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.getByRole("button", { name: "Replace draft", exact: true }).click();
       await inserted(page);
       assert.match(await page.evaluate(() => globalThis.model), /^Today is /);
@@ -201,7 +201,7 @@ test("composer insertion through the actual isolated extension content scripts",
           event.target.replaceWith(replacement);
         }, { once: true });
       });
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.locator("#prompt-panel").waitFor({ state: "hidden" });
       await inserted(page);
       assert.equal(await page.locator(".notice").filter({ hasText: "could not be confirmed" }).count(), 0);
@@ -224,7 +224,7 @@ test("composer insertion through the actual isolated extension content scripts",
           }, 140);
         });
       });
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await inserted(page);
       assert.match(await page.getByLabel("Message Copilot").innerText(), /^Today is /);
       assert.equal(await page.evaluate(() => globalThis.pastes), 1);
@@ -237,7 +237,7 @@ test("composer insertion through the actual isolated extension content scripts",
         const replacement = event.target.cloneNode(); replacement.value = "A newer draft";
         event.target.replaceWith(replacement);
       }, { once: true }));
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.locator(".notice").filter({ hasText: "could not be confirmed" }).waitFor();
       assert.equal(await page.getByLabel("Message Copilot").inputValue(), "A newer draft");
       await page.close();
@@ -246,7 +246,7 @@ test("composer insertion through the actual isolated extension content scripts",
       const page = await createPage(textarea, "Keep this draft");
       const dock = page.locator("#taskboard-copilot-prompts");
       for (const close of ["button", "escape", "outside"]) {
-        await choose(page, "snapshot");
+        await choose(page, "priorities");
         await dock.getByRole("button", { name: "Replace draft", exact: true }).waitFor();
         if (close === "button") await dock.locator(".close").click();
         if (close === "escape") await dock.locator(".close").press("Escape");
@@ -266,9 +266,9 @@ test("composer insertion through the actual isolated extension content scripts",
         event.target.replaceWith(replacement);
         setTimeout(() => { replacement.value = value; }, 250);
       }, { once: true }));
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.locator("#taskboard-copilot-prompts .toggle").click();
-      assert.equal(await page.locator('[data-id="snapshot"]').isDisabled(), true);
+      assert.equal(await page.locator('[data-id="priorities"]').isDisabled(), true);
       await page.waitForTimeout(800);
       assert.equal(await page.locator("#prompt-panel").isVisible(), true);
       assert.equal(await page.locator(".notice").isVisible(), false);
@@ -280,7 +280,7 @@ test("composer insertion through the actual isolated extension content scripts",
       await page.evaluate(() => document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", event => event.preventDefault()));
       const dock = page.locator("#taskboard-copilot-prompts");
       for (const action of ["button", "escape", "outside", "typing", "reopen", "send"]) {
-        await choose(page, "snapshot");
+        await choose(page, "priorities");
         await dock.locator(".notice").waitFor();
         if (action === "button") await dock.getByRole("button", { name: "Dismiss Taskboard message", exact: true }).click();
         if (action === "escape") await dock.getByRole("button", { name: "Dismiss Taskboard message", exact: true }).press("Escape");
@@ -297,7 +297,7 @@ test("composer insertion through the actual isolated extension content scripts",
     });
     await suite.test("success and warning feedback expire and warnings remain available inside the panel", async () => {
       const success = await createPage(textarea);
-      await choose(success, "snapshot"); await inserted(success);
+      await choose(success, "priorities"); await inserted(success);
       await success.getByRole("button", { name: "Dismiss Taskboard message" }).focus();
       await success.locator(".notice").waitFor({ state: "hidden", timeout: 6500 });
       assert.equal(await success.locator("#taskboard-copilot-prompts").evaluate(host => host.shadowRoot.activeElement?.className), "toggle");
@@ -306,7 +306,7 @@ test("composer insertion through the actual isolated extension content scripts",
       await page.evaluate(() => document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", event => event.preventDefault()));
       await page.setViewportSize({ width: 320, height: 568 });
       await page.emulateMedia({ colorScheme: "dark" });
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.locator(".notice").waitFor();
       const dismiss = await page.getByRole("button", { name: "Dismiss Taskboard message" }).boundingBox();
       assert.ok(dismiss.x >= 0 && dismiss.x + dismiss.width <= 320 && dismiss.y + dismiss.height <= 568);
@@ -336,7 +336,7 @@ test("composer insertion through the actual isolated extension content scripts",
     await suite.test("an editor rejecting paste is not falsely reported as populated", async () => {
       const page = await createPage(rich);
       await page.evaluate(() => document.querySelector("#m365-chat-editor-target-element").addEventListener("paste", (event) => event.preventDefault()));
-      await choose(page, "snapshot");
+      await choose(page, "priorities");
       await page.getByRole("status").filter({ hasText: "could not be confirmed" }).waitFor();
       assert.equal(await page.locator("#m365-chat-editor-target-element").innerText(), "");
       await page.close();

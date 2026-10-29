@@ -89,11 +89,16 @@
       // Copilot can replace the editor after handling paste/input. Reacquire
       // only its unique visible composer and verify the complete text twice.
       // Never retry insertion into a replacement or overwrite a changed draft.
-      let previous = null;
+      let consecutiveMatches = 0;
       for (let attempt = 0; attempt < 10; attempt++) {
         await pause();
         const current = findComposer(doc);
-        if (matches(current) && current === previous) {
+        if (matches(current)) {
+          consecutiveMatches++;
+        } else {
+          consecutiveMatches = 0;
+        }
+        if (consecutiveMatches >= 2) {
           if (!canFocus()) return { state: "inserted" };
           current.focus();
           if (current.tagName === "TEXTAREA") current.setSelectionRange(current.value.length, current.value.length);
@@ -104,7 +109,6 @@
           current.scrollIntoView({ block: "nearest" });
           return { state: "inserted" };
         }
-        previous = matches(current) ? current : null;
       }
       return { state: "unconfirmed" };
     } catch {
